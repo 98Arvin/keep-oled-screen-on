@@ -46,7 +46,7 @@
 </head>
 <body tabindex="0">
   <div id="dot" aria-hidden="true"></div>
-  <div id="sr">Tap/click to toggle keep-awake. Press Space to toggle fullscreen.</div>
+  <div id="sr">Click to toggle. Press Space or F to toggle fullscreen.</div>
 
   <script>
     (function () {
@@ -141,7 +141,7 @@
       }
 
       document.addEventListener('keydown', (e) => {
-        if (e.code === 'Space' || e.key === ' ') {
+        if (e.code === 'Space' || e.key === ' ' || e.code === 'KeyF' || e.key === 'f' || e.key === 'F') {
           e.preventDefault(); // Prevent page scroll
           toggleFullscreen();
         }
