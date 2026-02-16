@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Keep Awake</title>
+  <style>
+    :root { color-scheme: dark; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #000;
+      overflow: hidden;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      outline: none;
+    }
+
+    #dot {
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: #ff7a00;
+      opacity: 0.9;
+      transform: translate3d(0,0,0);
+      will-change: transform;
+      pointer-events: none;
+    }
+
+    body.active #dot { display: none; }
+
+    #sr {
+      position: fixed;
+      width: 1px;
+      height: 1px;
+      left: -9999px;
+      top: -9999px;
+    }
+  </style>
+</head>
+<body tabindex="0">
+  <div id="dot" aria-hidden="true"></div>
+  <div id="sr">Tap/click to toggle keep-awake. Press Space to toggle fullscreen.</div>
+
+  <script>
+    (function () {
+      let wakeLock = null;
+      let active = true; // Active on launch
+
+      const dot = document.getElementById('dot');
+      const DOT_SIZE = 10;
+
+      function randInt(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+      }
+
+      function placeDotRandomly() {
+        const margin = 16;
+        const w = Math.max(1, window.innerWidth);
+        const h = Math.max(1, window.innerHeight);
+
+        const xMax = Math.max(margin, w - margin - DOT_SIZE);
+        const yMax = Math.max(margin, h - margin - DOT_SIZE);
+
+        const x = randInt(margin, xMax);
+        const y = randInt(margin, yMax);
+
+        dot.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0)';
+      }
+
+      async function requestWakeLock() {
+        if (!('wakeLock' in navigator) || !navigator.wakeLock) return;
+        try {
+          wakeLock = await navigator.wakeLock.request('screen');
+          wakeLock.addEventListener('release', () => { wakeLock = null; });
+        } catch (_) {
+          wakeLock = null;
+        }
+      }
+
+      async function releaseWakeLock() {
+        if (!wakeLock) return;
+        try {
+          await wakeLock.release();
+        } catch (_) {
+          // ignore
+        } finally {
+          wakeLock = null;
+        }
+      }
+
+      async function setActive(next) {
+        active = next;
+        document.body.classList.toggle('active', active);
+
+        if (active) {
+          await requestWakeLock();
+        } else {
+          await releaseWakeLock();
+          placeDotRandomly();
+        }
+      }
+
+      async function toggleActive() {
+        await setActive(!active);
+      }
+
+      // Click anywhere toggle
+      document.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        toggleActive();
+      }, { passive: false });
+
+      document.addEventListener('visibilitychange', async () => {
+        if (!active) return;
+        if (document.visibilityState !== 'visible') return;
+        if (wakeLock) return;
+        await requestWakeLock();
+      });
+
+      window.addEventListener('resize', () => {
+        if (!active) placeDotRandomly();
+      });
+
+      // Space toggles fullscreen
+      async function toggleFullscreen() {
+        try {
+          if (document.fullscreenElement) {
+            await document.exitFullscreen();
+          } else {
+            await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+          }
+        } catch (_) {
+        }
+      }
+
+      document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' || e.key === ' ') {
+          e.preventDefault(); // Prevent page scroll
+          toggleFullscreen();
+        }
+      }, { passive: false });
+
+      window.addEventListener('click', () => {
+        try { document.body.focus(); } catch (_) {}
+      });
+
+      // Active by default
+      (async function init() {
+        document.body.classList.toggle('active', active);
+        try { document.body.focus(); } catch (_) {}
+        await requestWakeLock();
+      })();
+    })();
+  </script>
+</body>
+</html>
