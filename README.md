@@ -5,12 +5,14 @@ Minimal, OLED friendly web page to keep your screen awake
 ## Features
 
 - Pure black background (OLED safe)
-- Tiny orange dot when inactive (randomly placed to prevent burn-in)
 - Click anywhere to toggle on/off
-- Spacebar toggles fullscreen
-- Uses Wake Lock API when available
+- Space or F toggles fullscreen
+- Subtle onboarding hint on load
+- Clean empty screen when active
+- Screen stays awake using Wake Lock API (when supported)
+- Small drifting orange dot with "OFF" when inactive (burn-in safe)
 
 ## Analytics
 
-You can view live visitor stats here:  
+Live stats:  
 https://98arvin.goatcounter.com
