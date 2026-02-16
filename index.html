@@ -5,9 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <script data-goatcounter="https://98arvin.goatcounter.com/count"
           async src="//gc.zgo.at/count.js"></script>
-  <title>Keep Awake - OLED</title>
+  <title>Keep OLED Screen On</title>
   <style>
     :root { color-scheme: dark; }
+
     html, body {
       margin: 0;
       height: 100%;
@@ -19,222 +20,214 @@
       outline: none;
     }
 
+    /* dot = OFF */
     #dot {
       position: fixed;
       left: 0;
       top: 0;
-      width: 30px;
-      height: 30px;
+      width: 34px;
+      height: 34px;
       border-radius: 999px;
       background: #ff7a00;
       opacity: 0.9;
+      display: grid;
+      place-items: center;
       transform: translate3d(0,0,0);
       will-change: transform;
       pointer-events: none;
+      font-family: helvetica;
+      font-size: 10px;
+      font-weight: 7000;
+      text-shadow: 0 0 0.0px #000, 0.4px 0 #000, -0.4px 0 #000, 0 0.4px #000, 0 -0.4px #000;
+      color: #000;
+      letter-spacing: 0.4px;
     }
-    body.active #dot { display: none; }
 
-    /* Status overlay */
+    body.active #dot {
+      display: none;
+    }
+
+    /* overlay */
     #status {
       position: fixed;
       inset: 0;
       display: grid;
       place-items: center;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-family: monospace;
       color: #ff7a00;
       opacity: 0;
       pointer-events: none;
       transition: opacity 120ms linear;
       text-align: center;
     }
+
     #status.show { opacity: 0.9; }
 
     #status .main {
       font-size: 44px;
       letter-spacing: 2px;
-      line-height: 1.05;
     }
+
     #status .hint {
       margin-top: 10px;
       font-size: 12px;
-      letter-spacing: 0.6px;
-      opacity: 0.75;
-    }
-    #status .hint .countdown {
-      display: block;
-      margin-top: 6px;
       opacity: 0.7;
     }
 
-    #sr {
-      position: fixed;
-      width: 1px;
-      height: 1px;
-      left: -9999px;
-      top: -9999px;
+    #status .countdown {
+      margin-top: 6px;
+      opacity: 0.6;
     }
   </style>
 </head>
 <body tabindex="0">
-  <div id="dot" aria-hidden="true"></div>
-  <div id="status" aria-hidden="true"></div>
-  <div id="sr">Click to toggle. Press Space or F to toggle fullscreen.</div>
+
+  <div id="dot">OFF</div>
+  <div id="status"></div>
 
   <script>
     (function () {
+
       let wakeLock = null;
-      let active = true; // Active on launch
+      let active = true;
 
-      const dot = document.getElementById('dot');
-      const statusEl = document.getElementById('status');
-      const DOT_SIZE = 30;
-      let statusTimer = null;
+      const dot = document.getElementById("dot");
+      const statusEl = document.getElementById("status");
 
-      function randInt(min, max) {
-        return Math.floor(Math.random() * (max - min + 1)) + min;
+      const DOT_SIZE = 34;
+
+      let animFrame = null;
+      let lastTime = null;
+      let vx = 0.02;
+      let vy = 0.015;
+      let x = 100;
+      let y = 100;
+
+      let timer = null;
+
+      function rand(min, max) {
+        return Math.random() * (max - min) + min;
       }
 
-      function placeDotRandomly() {
-        const margin = 16;
-        const w = Math.max(1, window.innerWidth);
-        const h = Math.max(1, window.innerHeight);
-
-        const xMax = Math.max(margin, w - margin - DOT_SIZE);
-        const yMax = Math.max(margin, h - margin - DOT_SIZE);
-
-        const x = randInt(margin, xMax);
-        const y = randInt(margin, yMax);
-
-        dot.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0)';
+      function place(xPos, yPos) {
+        dot.style.transform = `translate3d(${xPos}px, ${yPos}px, 0)`;
       }
 
-      function showStatus(text, showHint) {
-        if (statusTimer) clearTimeout(statusTimer);
-        if (showStatus._countdownTimer) clearInterval(showStatus._countdownTimer);
+      function startDrift() {
+        stopDrift();
 
-        if (showHint) {
-          statusEl.innerHTML =
-            '<div class="main">' + text + '</div>' +
-            '<div class="hint">' +
-              'Click anywhere = toggle<br>Space / F = fullscreen<br>' +
-              '<span class="countdown">Fading in <span id="countdownSec">5</span>s</span>' +
-            '</div>';
-        } else {
-          statusEl.innerHTML = '<div class="main">' + text + '</div>';
+        x = rand(50, window.innerWidth - 50);
+        y = rand(50, window.innerHeight - 50);
+
+        vx = rand(-0.02, 0.02);
+        vy = rand(-0.02, 0.02);
+
+        lastTime = performance.now();
+
+        function loop(now) {
+          const dt = now - lastTime;
+          lastTime = now;
+
+          x += vx * dt;
+          y += vy * dt;
+
+          if (x <= 0 || x >= window.innerWidth - DOT_SIZE) vx *= -1;
+          if (y <= 0 || y >= window.innerHeight - DOT_SIZE) vy *= -1;
+
+          place(x, y);
+
+          animFrame = requestAnimationFrame(loop);
         }
 
-        statusEl.classList.add('show');
+        animFrame = requestAnimationFrame(loop);
+      }
 
-        const durationMs = showHint ? 5000 : 2000;
+      function stopDrift() {
+        if (animFrame) cancelAnimationFrame(animFrame);
+        animFrame = null;
+      }
 
-        if (showHint) {
-          let remaining = Math.ceil(durationMs / 1000);
-          const secEl = document.getElementById('countdownSec');
+      function showStatus(text, hint) {
+        if (timer) clearTimeout(timer);
 
-          showStatus._countdownTimer = setInterval(() => {
-            remaining -= 1;
-            if (secEl) secEl.textContent = String(Math.max(0, remaining));
-            if (remaining <= 0) {
-              clearInterval(showStatus._countdownTimer);
-              showStatus._countdownTimer = null;
-            }
+        statusEl.innerHTML = `
+          <div class="main">${text}</div>
+          ${hint ? `
+            <div class="hint">
+              Click = toggle<br>
+              Space / F = fullscreen
+              <div class="countdown" id="c">5</div>
+            </div>` : ''}
+        `;
+
+        statusEl.classList.add("show");
+
+        if (hint) {
+          let t = 5;
+          const c = document.getElementById("c");
+
+          const i = setInterval(() => {
+            t--;
+            if (c) c.textContent = t;
+            if (t <= 0) clearInterval(i);
           }, 1000);
         }
 
-        statusTimer = setTimeout(() => {
-          statusEl.classList.remove('show');
-          if (showStatus._countdownTimer) {
-            clearInterval(showStatus._countdownTimer);
-            showStatus._countdownTimer = null;
-          }
-        }, durationMs);
+        timer = setTimeout(() => {
+          statusEl.classList.remove("show");
+        }, hint ? 5000 : 2000);
       }
 
-      async function requestWakeLock() {
-        if (!('wakeLock' in navigator) || !navigator.wakeLock) return;
+      async function requestLock() {
+        if (!navigator.wakeLock) return false;
         try {
-          wakeLock = await navigator.wakeLock.request('screen');
-          wakeLock.addEventListener('release', () => { wakeLock = null; });
-        } catch (_) {
-          wakeLock = null;
+          wakeLock = await navigator.wakeLock.request("screen");
+          return true;
+        } catch {
+          return false;
         }
       }
 
-      async function releaseWakeLock() {
-        if (!wakeLock) return;
-        try {
-          await wakeLock.release();
-        } catch (_) {
-        } finally {
-          wakeLock = null;
-        }
+      async function releaseLock() {
+        if (wakeLock) await wakeLock.release();
+        wakeLock = null;
       }
 
-      async function setActive(next) {
-        active = next;
-        document.body.classList.toggle('active', active);
+      async function setActive(state) {
+        active = state;
+        document.body.classList.toggle("active", active);
 
         if (active) {
-          showStatus('ACTIVE', false);
-          await requestWakeLock();
+          stopDrift();
+          showStatus("ACTIVE", false);
+          await requestLock();
         } else {
-          showStatus('DEACTIVATED', false);
-          await releaseWakeLock();
-          placeDotRandomly();
+          showStatus("DEACTIVATED", false);
+          await releaseLock();
+          startDrift();
         }
       }
 
-      async function toggleActive() {
-        await setActive(!active);
-      }
-
-      // Click anywhere toggles active/inactive
-      document.addEventListener('pointerdown', (e) => {
+      document.addEventListener("pointerdown", (e) => {
         e.preventDefault();
-        toggleActive();
-      }, { passive: false });
-
-      // Re-assert wake lock when returning to the page
-      document.addEventListener('visibilitychange', async () => {
-        if (!active) return;
-        if (document.visibilityState !== 'visible') return;
-        if (wakeLock) return;
-        await requestWakeLock();
+        setActive(!active);
       });
 
-      window.addEventListener('resize', () => {
-        if (!active) placeDotRandomly();
-      });
-
-      async function toggleFullscreen() {
-        try {
-          if (document.fullscreenElement) {
-            await document.exitFullscreen();
-          } else {
-            await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
-          }
-        } catch (_) {}
-      }
-
-      document.addEventListener('keydown', (e) => {
-        if (e.code === 'Space' || e.key === ' ' || e.code === 'KeyF' || e.key === 'f' || e.key === 'F') {
+      document.addEventListener("keydown", (e) => {
+        if (e.code === "Space" || e.key === "f" || e.key === "F") {
           e.preventDefault();
-          toggleFullscreen();
+          document.fullscreenElement
+            ? document.exitFullscreen()
+            : document.documentElement.requestFullscreen();
         }
-      }, { passive: false });
-
-      window.addEventListener('click', () => {
-        try { document.body.focus(); } catch (_) {}
       });
 
-      // Init: active by default + always show ACTIVE + hint on load
       (async function init() {
-        document.body.classList.toggle('active', active);
-        try { document.body.focus(); } catch (_) {}
-
-        showStatus('ACTIVE', true);
-        await requestWakeLock();
+        document.body.classList.toggle("active", active);
+        showStatus("ACTIVE", true);
+        await requestLock();
       })();
+
     })();
   </script>
 </body>
