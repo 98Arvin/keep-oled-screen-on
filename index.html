@@ -33,7 +33,7 @@
       display: grid;
       place-items: center;
       transform: translate3d(0,0,0);
-      will-change: transform;
+      will-change: transform, opacity;
       pointer-events: none;
       font-family: helvetica;
       font-size: 10px;
@@ -41,10 +41,12 @@
       text-shadow: 0 0 0.0px #000, 0.4px 0 #000, -0.4px 0 #000, 0 0.4px #000, 0 -0.4px #000;
       color: #000;
       letter-spacing: 0.4px;
+      transition: opacity 600ms ease;
     }
 
+    /* fade dot out when active (instead of display:none) */
     body.active #dot {
-      display: none;
+      opacity: 0;
     }
 
     /* overlay */
@@ -57,8 +59,8 @@
       color: #ff7a00;
       opacity: 0;
       pointer-events: none;
-      transition: opacity 120ms linear;
       text-align: center;
+      transition: opacity 900ms ease;
     }
 
     #status.show { opacity: 0.9; }
@@ -74,9 +76,31 @@
       opacity: 0.7;
     }
 
+    #status .hint .primary {
+      font-size: 16px;
+      display: inline-block;
+      margin-bottom: 16px;
+      opacity: 0;
+      transition: opacity 900ms ease;
+    }
+
+    #status.show .hint .primary { opacity: 1; }
+
     #status .countdown {
       margin-top: 6px;
       opacity: 0.6;
+    }
+
+    /* reserve space, fade in later */
+    .reserve {
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 900ms ease;
+    }
+
+    .reveal {
+      visibility: visible;
+      opacity: 1;
     }
   </style>
 </head>
@@ -103,7 +127,9 @@
       let x = 100;
       let y = 100;
 
-      let timer = null;
+      let countdownInterval = null;
+      let introTimeout = null;
+      let hideTimeout = null;
 
       function rand(min, max) {
         return Math.random() * (max - min) + min;
@@ -135,7 +161,6 @@
           if (y <= 0 || y >= window.innerHeight - DOT_SIZE) vy *= -1;
 
           place(x, y);
-
           animFrame = requestAnimationFrame(loop);
         }
 
@@ -147,35 +172,87 @@
         animFrame = null;
       }
 
-      function showStatus(text, hint) {
-        if (timer) clearTimeout(timer);
+      function stopCountdown() {
+        if (countdownInterval) clearInterval(countdownInterval);
+        countdownInterval = null;
+      }
+
+      function clearOverlayTimers() {
+        if (introTimeout) clearTimeout(introTimeout);
+        if (hideTimeout) clearTimeout(hideTimeout);
+        introTimeout = null;
+        hideTimeout = null;
+        stopCountdown();
+      }
+
+      function fadeInOverlay() {
+        statusEl.classList.remove("show");
+        requestAnimationFrame(() => statusEl.classList.add("show"));
+      }
+
+      function fadeOutOverlay() {
+        statusEl.classList.remove("show");
+      }
+
+      function setOverlayHtmlWithFade(html) {
+        fadeOutOverlay();
+        setTimeout(() => {
+          statusEl.innerHTML = html;
+          fadeInOverlay();
+        }, 200);
+      }
+
+      function progressiveIntro() {
+        clearOverlayTimers();
 
         statusEl.innerHTML = `
-          <div class="main">${text}</div>
-          ${hint ? `
-            <div class="hint">
+          <div class="main reserve" id="activeText">ACTIVE</div>
+          <div class="hint">
+            <span class="primary">Keeps your screen awake</span><br>
+            <span class="reserve" id="restHint">
               Click = toggle<br>
               Space / F = fullscreen
               <div class="countdown" id="c">5</div>
-            </div>` : ''}
+            </span>
+          </div>
         `;
 
-        statusEl.classList.add("show");
+        fadeInOverlay();
 
-        if (hint) {
+        introTimeout = setTimeout(() => {
+          const activeText = document.getElementById("activeText");
+          const restHint = document.getElementById("restHint");
+
+          if (activeText) activeText.classList.add("reveal");
+          if (restHint) restHint.classList.add("reveal");
+
           let t = 5;
           const c = document.getElementById("c");
+          if (c) c.textContent = t;
 
-          const i = setInterval(() => {
+          countdownInterval = setInterval(() => {
+            const cc = document.getElementById("c");
+            if (!cc) return stopCountdown();
             t--;
-            if (c) c.textContent = t;
-            if (t <= 0) clearInterval(i);
+            cc.textContent = t;
+            if (t <= 0) stopCountdown();
           }, 1000);
-        }
 
-        timer = setTimeout(() => {
-          statusEl.classList.remove("show");
-        }, hint ? 5000 : 2000);
+          hideTimeout = setTimeout(() => {
+            fadeOutOverlay();
+          }, 5000);
+
+        }, 2000);
+      }
+
+      function showToggleState(text) {
+        clearOverlayTimers();
+
+        setOverlayHtmlWithFade(`<div class="main">${text}</div>`);
+
+        hideTimeout = setTimeout(() => {
+          fadeOutOverlay();
+        }, 2000 + 200);
       }
 
       async function requestLock() {
@@ -199,10 +276,10 @@
 
         if (active) {
           stopDrift();
-          showStatus("ACTIVE", false);
+          showToggleState("ACTIVE");
           await requestLock();
         } else {
-          showStatus("DEACTIVATED", false);
+          showToggleState("DEACTIVATED");
           await releaseLock();
           startDrift();
         }
@@ -224,7 +301,7 @@
 
       (async function init() {
         document.body.classList.toggle("active", active);
-        showStatus("ACTIVE", true);
+        progressiveIntro();
         await requestLock();
       })();
 
