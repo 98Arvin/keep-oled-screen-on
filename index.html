@@ -43,7 +43,6 @@
       transition: opacity 600ms ease;
     }
 
-    /* slower only on first paint after reload */
     body.boot #dot { transition: opacity 1800ms ease; }
     body.ready #dot { transition: opacity 600ms ease; }
 
@@ -51,6 +50,7 @@
     body.ready.active #dot { opacity: 0; }
     body.ready.active.show-dot #dot { opacity: 0.9; }
 
+    /* MAIN OVERLAY */
     #status {
       position: fixed;
       inset: 0;
@@ -66,19 +66,9 @@
 
     #status.show { opacity: 0.9; }
 
-    /* fast fade for tiny overlays */
-    #status.fast { transition: opacity 450ms ease; }
-
     #status .main {
       font-size: 44px;
       letter-spacing: 2px;
-    }
-
-    /* tiny overlay text */
-    #status.tiny .main {
-      font-size: 16px;
-      letter-spacing: 1px;
-      opacity: 0.85;
     }
 
     #status .hint {
@@ -103,6 +93,27 @@
       opacity: 0.4;
     }
 
+    #toast {
+      position: fixed;
+      left: 50%;
+      bottom: 22px;
+      transform: translate3d(-50%, 0, 0);
+      font-family: monospace;
+      color: #ff7a00;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 450ms ease;
+      text-align: center;
+    }
+
+    #toast.show { opacity: 0.9; }
+
+    #toast .main {
+      font-size: 12px;
+      letter-spacing: 1px;
+      opacity: 0.85;
+    }
+
     .reserve {
       visibility: hidden;
       opacity: 0;
@@ -119,6 +130,7 @@
 
   <div id="dot">OFF</div>
   <div id="status"></div>
+  <div id="toast"></div>
 
   <script>
     (function () {
@@ -128,6 +140,7 @@
 
       const dot = document.getElementById("dot");
       const statusEl = document.getElementById("status");
+      const toastEl = document.getElementById("toast");
 
       const DOT_SIZE = 34;
 
@@ -141,6 +154,7 @@
       let countdownInterval = null;
       let introTimeout = null;
       let hideTimeout = null;
+      let toastHide = null;
 
       const LS_KEY = "showDotOnActive";
       let showDotOnActive = (localStorage.getItem(LS_KEY) === "1");
@@ -208,12 +222,8 @@
         statusEl.classList.remove("show");
       }
 
-      function setOverlayHtmlWithFade(html, mode) {
+      function setOverlayHtmlWithFade(html) {
         clearOverlayTimers();
-
-        // hard reset to avoid tiny->big glitches when spamming keys
-        statusEl.className = "";
-        if (mode === "tiny") statusEl.classList.add("tiny", "fast");
 
         fadeOutOverlay();
         setTimeout(() => {
@@ -237,7 +247,6 @@
 
           if (!animFrame) startDrift();
         } else {
-          // keep ON while fading out so you never see OFF in active state
           dot.textContent = "ON";
           document.body.classList.remove("show-dot");
           stopDrift();
@@ -246,7 +255,6 @@
 
       function progressiveIntro() {
         clearOverlayTimers();
-        statusEl.classList.remove("tiny", "fast");
 
         statusEl.innerHTML = `
           <div class="main reserve" id="activeText">ACTIVE</div>
@@ -290,16 +298,23 @@
       }
 
       function showToggleState(text) {
-        setOverlayHtmlWithFade(`<div class="main">${text}</div>`, "normal");
+        toastEl.classList.remove("show"); // prevent overlap
+
+        setOverlayHtmlWithFade(`<div class="main">${text}</div>`);
+
         hideTimeout = setTimeout(() => {
           fadeOutOverlay();
         }, 2200);
       }
 
       function showTinyToast(text) {
-        setOverlayHtmlWithFade(`<div class="main">${text}</div>`, "tiny");
-        hideTimeout = setTimeout(() => {
-          fadeOutOverlay();
+        if (toastHide) clearTimeout(toastHide);
+
+        toastEl.innerHTML = `<div class="main">${text}</div>`;
+        toastEl.classList.add("show");
+
+        toastHide = setTimeout(() => {
+          toastEl.classList.remove("show");
         }, 900);
       }
 
