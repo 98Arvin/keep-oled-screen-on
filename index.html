@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <script data-goatcounter="https://screenawake.goatcounter.com/count"
           async src="//gc.zgo.at/count.js"></script>
-  <title>Stay Awake - OLED</title>
+  <title>ScreenAwake - OLED</title>
   <style>
     :root { color-scheme: dark; }
 
@@ -20,7 +20,6 @@
       outline: none;
     }
 
-    /* dot = OFF */
     #dot {
       position: fixed;
       left: 0;
@@ -29,7 +28,7 @@
       height: 34px;
       border-radius: 999px;
       background: #ff7a00;
-      opacity: 0.9;
+      opacity: 0;
       display: grid;
       place-items: center;
       transform: translate3d(0,0,0);
@@ -44,12 +43,14 @@
       transition: opacity 600ms ease;
     }
 
-    /* fade dot out when active (instead of display:none) */
-    body.active #dot {
-      opacity: 0;
-    }
+    /* slower only on first paint after reload */
+    body.boot #dot { transition: opacity 1800ms ease; }
+    body.ready #dot { transition: opacity 600ms ease; }
 
-    /* overlay */
+    body.ready #dot { opacity: 0.9; }
+    body.ready.active #dot { opacity: 0; }
+    body.ready.active.show-dot #dot { opacity: 0.9; }
+
     #status {
       position: fixed;
       inset: 0;
@@ -65,9 +66,19 @@
 
     #status.show { opacity: 0.9; }
 
+    /* fast fade for tiny overlays */
+    #status.fast { transition: opacity 450ms ease; }
+
     #status .main {
       font-size: 44px;
       letter-spacing: 2px;
+    }
+
+    /* tiny overlay text */
+    #status.tiny .main {
+      font-size: 16px;
+      letter-spacing: 1px;
+      opacity: 0.85;
     }
 
     #status .hint {
@@ -87,11 +98,11 @@
     #status.show .hint .primary { opacity: 1; }
 
     #status .countdown {
-      margin-top: 6px;
-      opacity: 0.6;
+      margin-top: 10px;
+      font-size: 18px;
+      opacity: 0.4;
     }
 
-    /* reserve space, fade in later */
     .reserve {
       visibility: hidden;
       opacity: 0;
@@ -131,16 +142,19 @@
       let introTimeout = null;
       let hideTimeout = null;
 
+      const LS_KEY = "showDotOnActive";
+      let showDotOnActive = (localStorage.getItem(LS_KEY) === "1");
+
       function rand(min, max) {
         return Math.random() * (max - min) + min;
       }
 
       function place(xPos, yPos) {
-        dot.style.transform = `translate3d(${xPos}px, ${yPos}px, 0)`;
+        dot.style.transform = "translate3d(" + xPos + "px," + yPos + "px, 0)";
       }
 
       function startDrift() {
-        stopDrift();
+        if (animFrame) return;
 
         x = rand(50, window.innerWidth - 50);
         y = rand(50, window.innerHeight - 50);
@@ -194,25 +208,55 @@
         statusEl.classList.remove("show");
       }
 
-      function setOverlayHtmlWithFade(html) {
+      function setOverlayHtmlWithFade(html, mode) {
+        clearOverlayTimers();
+
+        // hard reset to avoid tiny->big glitches when spamming keys
+        statusEl.className = "";
+        if (mode === "tiny") statusEl.classList.add("tiny", "fast");
+
         fadeOutOverlay();
         setTimeout(() => {
           statusEl.innerHTML = html;
           fadeInOverlay();
-        }, 200);
+        }, 120);
+      }
+
+      function applyDotMode(skipDriftReset) {
+        if (!active) {
+          dot.textContent = "OFF";
+          document.body.classList.remove("show-dot");
+
+          if (!animFrame && !skipDriftReset) startDrift();
+          return;
+        }
+
+        if (showDotOnActive) {
+          dot.textContent = "ON";
+          document.body.classList.add("show-dot");
+
+          if (!animFrame) startDrift();
+        } else {
+          // keep ON while fading out so you never see OFF in active state
+          dot.textContent = "ON";
+          document.body.classList.remove("show-dot");
+          stopDrift();
+        }
       }
 
       function progressiveIntro() {
         clearOverlayTimers();
+        statusEl.classList.remove("tiny", "fast");
 
         statusEl.innerHTML = `
           <div class="main reserve" id="activeText">ACTIVE</div>
           <div class="hint">
-            <span class="primary">Keeps your screen awake</span><br>
+            <span class="primary">Keeps your OLED screen awake</span><br>
             <span class="reserve" id="restHint">
-              Click = toggle<br>
-              Space / F = fullscreen
-              <div class="countdown" id="c">5</div>
+              Space or click = toggle<br>
+              F = fullscreen<br>
+              V = dot on/off<br>
+              <div class="countdown" id="c">3</div>
             </span>
           </div>
         `;
@@ -226,7 +270,7 @@
           if (activeText) activeText.classList.add("reveal");
           if (restHint) restHint.classList.add("reveal");
 
-          let t = 5;
+          let t = 3;
           const c = document.getElementById("c");
           if (c) c.textContent = t;
 
@@ -240,19 +284,23 @@
 
           hideTimeout = setTimeout(() => {
             fadeOutOverlay();
-          }, 5000);
+          }, 3000);
 
         }, 2000);
       }
 
       function showToggleState(text) {
-        clearOverlayTimers();
-
-        setOverlayHtmlWithFade(`<div class="main">${text}</div>`);
-
+        setOverlayHtmlWithFade(`<div class="main">${text}</div>`, "normal");
         hideTimeout = setTimeout(() => {
           fadeOutOverlay();
-        }, 2000 + 200);
+        }, 2200);
+      }
+
+      function showTinyToast(text) {
+        setOverlayHtmlWithFade(`<div class="main">${text}</div>`, "tiny");
+        hideTimeout = setTimeout(() => {
+          fadeOutOverlay();
+        }, 900);
       }
 
       async function requestLock() {
@@ -275,14 +323,32 @@
         document.body.classList.toggle("active", active);
 
         if (active) {
-          stopDrift();
           showToggleState("ACTIVE");
           await requestLock();
         } else {
           showToggleState("DEACTIVATED");
           await releaseLock();
-          startDrift();
         }
+
+        applyDotMode();
+      }
+
+      function toggleDotOnActive() {
+        showDotOnActive = !showDotOnActive;
+        localStorage.setItem(LS_KEY, showDotOnActive ? "1" : "0");
+
+        applyDotMode(true);
+        showTinyToast(showDotOnActive ? "DOT ON" : "DOT OFF");
+      }
+
+      async function toggleFullscreen() {
+        try {
+          if (document.fullscreenElement) {
+            await document.exitFullscreen();
+          } else {
+            await document.documentElement.requestFullscreen();
+          }
+        } catch (_) {}
       }
 
       document.addEventListener("pointerdown", (e) => {
@@ -291,17 +357,39 @@
       });
 
       document.addEventListener("keydown", (e) => {
-        if (e.code === "Space" || e.key === "f" || e.key === "F") {
+        if (e.code === "Space") {
           e.preventDefault();
-          document.fullscreenElement
-            ? document.exitFullscreen()
-            : document.documentElement.requestFullscreen();
+          setActive(!active);
+          return;
+        }
+
+        if (e.key === "f" || e.key === "F") {
+          e.preventDefault();
+          toggleFullscreen();
+          return;
+        }
+
+        if (e.key === "v" || e.key === "V") {
+          e.preventDefault();
+          toggleDotOnActive();
         }
       });
 
       (async function init() {
         document.body.classList.toggle("active", active);
+
+        applyDotMode(true);
         progressiveIntro();
+
+        document.body.classList.add("boot");
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            document.body.classList.add("ready");
+            setTimeout(() => document.body.classList.remove("boot"), 1000);
+          });
+        });
+
         await requestLock();
       })();
 
