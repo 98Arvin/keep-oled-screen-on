@@ -7,12 +7,16 @@ Minimal, OLED friendly web page to keep your screen awake
 - Pure black background (OLED safe)
 - Click anywhere to toggle on/off
 - Space or F toggles fullscreen
-- Subtle onboarding hint on load
-- Clean empty screen when active
+- Smooth onboarding hint with progressive reveal
+- Subtle fade transitions for all state changes
 - Screen stays awake using Wake Lock API (when supported)
 - Small drifting orange dot with "OFF" when inactive (burn-in safe)
+
+## Live
+
+https://screenawake.app
 
 ## Analytics
 
 Live stats:  
-https://98arvin.goatcounter.com
+https://screenawake.goatcounter.com
