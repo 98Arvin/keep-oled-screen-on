@@ -61,7 +61,7 @@
       opacity: 0;
       pointer-events: none;
       text-align: center;
-      transition: opacity 900ms ease;
+      transition: opacity 600ms ease; /* changed from 900ms */
     }
 
     #status.show { opacity: 0.9; }
@@ -82,7 +82,7 @@
       display: inline-block;
       margin-bottom: 16px;
       opacity: 0;
-      transition: opacity 900ms ease;
+      transition: opacity 600ms ease; /* changed from 900ms */
     }
 
     #status.show .hint .primary { opacity: 1; }
@@ -102,7 +102,7 @@
       color: #ff7a00;
       opacity: 0;
       pointer-events: none;
-      transition: opacity 450ms ease;
+      transition: opacity 600ms ease; /* changed from 450ms */
       text-align: center;
     }
 
@@ -117,7 +117,7 @@
     .reserve {
       visibility: hidden;
       opacity: 0;
-      transition: opacity 900ms ease;
+      transition: opacity 600ms ease; /* changed from 900ms */
     }
 
     .reveal {
@@ -229,7 +229,7 @@
         setTimeout(() => {
           statusEl.innerHTML = html;
           fadeInOverlay();
-        }, 120);
+        }, 100); /* changed from 120ms */
       }
 
       function applyDotMode(skipDriftReset) {
@@ -298,13 +298,13 @@
       }
 
       function showToggleState(text) {
-        toastEl.classList.remove("show"); // prevent overlap
+        toastEl.classList.remove("show");
 
         setOverlayHtmlWithFade(`<div class="main">${text}</div>`);
 
         hideTimeout = setTimeout(() => {
           fadeOutOverlay();
-        }, 2200);
+        }, 600); /* changed from 2200ms */
       }
 
       function showTinyToast(text) {
@@ -315,7 +315,7 @@
 
         toastHide = setTimeout(() => {
           toastEl.classList.remove("show");
-        }, 900);
+        }, 600); /* changed from 900ms */
       }
 
       async function requestLock() {
