@@ -14,6 +14,7 @@ Minimal, OLED friendly web page to keep your screen awake
 
 ## Live
 
+https://oled.wtf
 https://screenawake.app
 
 ## Analytics
