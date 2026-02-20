@@ -61,7 +61,7 @@
       opacity: 0;
       pointer-events: none;
       text-align: center;
-      transition: opacity 600ms ease; /* changed from 900ms */
+      transition: opacity 600ms ease;
     }
 
     #status.show { opacity: 0.9; }
@@ -82,7 +82,7 @@
       display: inline-block;
       margin-bottom: 16px;
       opacity: 0;
-      transition: opacity 600ms ease; /* changed from 900ms */
+      transition: opacity 600ms ease;
     }
 
     #status.show .hint .primary { opacity: 1; }
@@ -102,7 +102,7 @@
       color: #ff7a00;
       opacity: 0;
       pointer-events: none;
-      transition: opacity 600ms ease; /* changed from 450ms */
+      transition: opacity 600ms ease;
       text-align: center;
     }
 
@@ -117,7 +117,7 @@
     .reserve {
       visibility: hidden;
       opacity: 0;
-      transition: opacity 600ms ease; /* changed from 900ms */
+      transition: opacity 600ms ease;
     }
 
     .reveal {
@@ -304,7 +304,7 @@
 
         hideTimeout = setTimeout(() => {
           fadeOutOverlay();
-        }, 600); /* changed from 2200ms */
+        }, 600);
       }
 
       function showTinyToast(text) {
@@ -315,7 +315,7 @@
 
         toastHide = setTimeout(() => {
           toastEl.classList.remove("show");
-        }, 600); /* changed from 900ms */
+        }, 600);
       }
 
       async function requestLock() {
