@@ -20,4 +20,4 @@ Minimal, OLED friendly web page to keep your screen awake
 ## Analytics
 
 Live stats:  
-https://screenawake.goatcounter.com
+https://oled.goatcounter.com
