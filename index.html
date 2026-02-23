@@ -186,6 +186,7 @@
 
       const CURSOR_IDLE_MS = 500;
       const HOLD_MS = 700;
+      const HINT_SHOW_MS = 3000;
 
       let wakeLock = null;
       let active = true;
@@ -318,9 +319,7 @@
         }
       }
 
-      function progressiveIntro() {
-        clearOverlayTimers();
-
+      function renderHintOverlay() {
         statusEl.innerHTML = `
           <div class="main reserve" id="activeText">ACTIVE</div>
           <div class="hint">
@@ -330,11 +329,17 @@
               Space = toggle<br>
               F = fullscreen<br>
               V = dot on/off<br>
+              H = hint<br>
               <div class="countdown" id="c">3</div>
             </span>
           </div>
         `;
+      }
 
+      function showHintFor(ms) {
+        clearOverlayTimers();
+
+        renderHintOverlay();
         fadeInOverlay();
 
         introTimeout = setTimeout(() => {
@@ -358,9 +363,13 @@
 
           hideTimeout = setTimeout(() => {
             fadeOutOverlay();
-          }, 3000);
+          }, ms);
 
         }, 2000);
+      }
+
+      function progressiveIntro() {
+        showHintFor(HINT_SHOW_MS);
       }
 
       function showToggleState(text) {
@@ -483,7 +492,7 @@
       }
 
       document.addEventListener("pointerdown", (e) => {
-        if (e.button !== 0) return; // left button only
+        if (e.button !== 0) return;
         e.preventDefault();
 
         onUserActivity();
@@ -522,6 +531,8 @@
 
       document.addEventListener("contextmenu", (e) => {
         e.preventDefault();
+        onUserActivity();
+        showHintFor(HINT_SHOW_MS);
       });
 
       document.addEventListener("keydown", (e) => {
@@ -542,6 +553,13 @@
         if (e.key === "v" || e.key === "V") {
           e.preventDefault();
           toggleDotOnActive();
+          return;
+        }
+
+        if (e.key === "h" || e.key === "H") {
+          e.preventDefault();
+          showHintFor(HINT_SHOW_MS);
+          return;
         }
       });
 
