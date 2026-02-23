@@ -21,6 +21,8 @@
       outline: none;
     }
 
+    body.hide-cursor { cursor: none; }
+
     #dot {
       position: fixed;
       left: 0;
@@ -51,7 +53,6 @@
     body.ready.active #dot { opacity: 0; }
     body.ready.active.show-dot #dot { opacity: 0.9; }
 
-    /* MAIN OVERLAY */
     #status {
       position: fixed;
       inset: 0;
@@ -160,6 +161,23 @@
       const LS_KEY = "showDotOnActive";
       let showDotOnActive = (localStorage.getItem(LS_KEY) === "1");
 
+      const CURSOR_IDLE_MS = 500;
+      let cursorTimer = null;
+
+      function showCursor() {
+        document.body.classList.remove("hide-cursor");
+      }
+
+      function hideCursor() {
+        document.body.classList.add("hide-cursor");
+      }
+
+      function resetCursorTimer() {
+        showCursor();
+        if (cursorTimer) clearTimeout(cursorTimer);
+        cursorTimer = setTimeout(hideCursor, CURSOR_IDLE_MS);
+      }
+
       function rand(min, max) {
         return Math.random() * (max - min) + min;
       }
@@ -230,7 +248,7 @@
         setTimeout(() => {
           statusEl.innerHTML = html;
           fadeInOverlay();
-        }, 100); /* changed from 120ms */
+        }, 100);
       }
 
       function applyDotMode(skipDriftReset) {
@@ -367,26 +385,32 @@
         } catch (_) {}
       }
 
+      document.addEventListener("mousemove", resetCursorTimer, { passive: true });
+
       document.addEventListener("pointerdown", (e) => {
         e.preventDefault();
+        resetCursorTimer();
         setActive(!active);
       });
 
       document.addEventListener("keydown", (e) => {
         if (e.code === "Space") {
           e.preventDefault();
+          resetCursorTimer();
           setActive(!active);
           return;
         }
 
         if (e.key === "f" || e.key === "F") {
           e.preventDefault();
+          resetCursorTimer();
           toggleFullscreen();
           return;
         }
 
         if (e.key === "v" || e.key === "V") {
           e.preventDefault();
+          resetCursorTimer();
           toggleDotOnActive();
         }
       });
@@ -405,6 +429,8 @@
             setTimeout(() => document.body.classList.remove("boot"), 1000);
           });
         });
+
+        resetCursorTimer();
 
         await requestLock();
       })();
