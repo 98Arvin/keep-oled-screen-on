@@ -19,9 +19,10 @@
       -webkit-tap-highlight-color: transparent;
       user-select: none;
       outline: none;
+      cursor: default;
     }
 
-    body.hide-cursor { cursor: none; }
+    body.cursor-hidden { cursor: none; }
 
     #dot {
       position: fixed;
@@ -126,6 +127,45 @@
       visibility: visible;
       opacity: 1;
     }
+
+    /* hold-to-toggle ring */
+    #hold {
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 56px;
+      height: 56px;
+      transform: translate3d(-9999px,-9999px,0);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 150ms ease;
+      will-change: transform, opacity;
+    }
+
+    #hold.show { opacity: 0.9; }
+
+    #hold svg {
+      width: 56px;
+      height: 56px;
+      display: block;
+      transform: rotate(-90deg);
+      filter: drop-shadow(0 0 0.25px rgba(0,0,0,0.6));
+    }
+
+    #hold .bg {
+      fill: none;
+      stroke: rgba(255, 122, 0, 0.18);
+      stroke-width: 5;
+    }
+
+    #hold .fg {
+      fill: none;
+      stroke: #ff7a00;
+      stroke-width: 5;
+      stroke-linecap: round;
+      stroke-dasharray: 1 999;
+      stroke-dashoffset: 0;
+    }
   </style>
 </head>
 <body tabindex="0">
@@ -134,8 +174,18 @@
   <div id="status"></div>
   <div id="toast"></div>
 
+  <div id="hold" aria-hidden="true">
+    <svg viewBox="0 0 56 56">
+      <circle class="bg" cx="28" cy="28" r="20"></circle>
+      <circle class="fg" cx="28" cy="28" r="20"></circle>
+    </svg>
+  </div>
+
   <script>
     (function () {
+
+      const CURSOR_IDLE_MS = 500;
+      const HOLD_MS = 700;
 
       let wakeLock = null;
       let active = true;
@@ -143,6 +193,9 @@
       const dot = document.getElementById("dot");
       const statusEl = document.getElementById("status");
       const toastEl = document.getElementById("toast");
+
+      const holdEl = document.getElementById("hold");
+      const holdFg = holdEl.querySelector(".fg");
 
       const DOT_SIZE = 34;
 
@@ -159,24 +212,17 @@
       let toastHide = null;
 
       const LS_KEY = "showDotOnActive";
-      let showDotOnActive = (localStorage.getItem(LS_KEY) === "1");
+      let showDotOnActive = (localStorage.getItem(LS_KEY) ?? "1") === "1";
 
-      const CURSOR_IDLE_MS = 500;
       let cursorTimer = null;
 
-      function showCursor() {
-        document.body.classList.remove("hide-cursor");
-      }
+      let holding = false;
+      let holdRAF = null;
+      let holdStart = 0;
+      let holdDone = false;
 
-      function hideCursor() {
-        document.body.classList.add("hide-cursor");
-      }
-
-      function resetCursorTimer() {
-        showCursor();
-        if (cursorTimer) clearTimeout(cursorTimer);
-        cursorTimer = setTimeout(hideCursor, CURSOR_IDLE_MS);
-      }
+      const R = 20;
+      const CIRC = 2 * Math.PI * R;
 
       function rand(min, max) {
         return Math.random() * (max - min) + min;
@@ -280,7 +326,8 @@
           <div class="hint">
             <span class="primary">Keeps your OLED screen awake</span><br>
             <span class="reserve" id="restHint">
-              Space or click = toggle<br>
+              Hold click = toggle<br>
+              Space = toggle<br>
               F = fullscreen<br>
               V = dot on/off<br>
               <div class="countdown" id="c">3</div>
@@ -385,32 +432,115 @@
         } catch (_) {}
       }
 
-      document.addEventListener("mousemove", resetCursorTimer, { passive: true });
+      function showHoldAt(clientX, clientY) {
+        holdEl.style.transform = "translate3d(" + clientX + "px," + clientY + "px,0) translate3d(-50%,-50%,0)";
+        holdEl.classList.add("show");
+        holdFg.style.strokeDasharray = CIRC + " " + CIRC;
+        holdFg.style.strokeDashoffset = String(CIRC);
+      }
+
+      function hideHold() {
+        holdEl.classList.remove("show");
+        holdEl.style.transform = "translate3d(-9999px,-9999px,0)";
+      }
+
+      function stopHoldLoop() {
+        if (holdRAF) cancelAnimationFrame(holdRAF);
+        holdRAF = null;
+      }
+
+      function startHoldLoop() {
+        stopHoldLoop();
+        holdDone = false;
+
+        function tick(now) {
+          if (!holding) return;
+
+          const elapsed = now - holdStart;
+          const p = Math.max(0, Math.min(1, elapsed / HOLD_MS));
+          holdFg.style.strokeDashoffset = String(CIRC * (1 - p));
+
+          if (p >= 1 && !holdDone) {
+            holdDone = true;
+            holding = false;
+            hideHold();
+            setActive(!active);
+            return;
+          }
+
+          holdRAF = requestAnimationFrame(tick);
+        }
+
+        holdRAF = requestAnimationFrame(tick);
+      }
+
+      function onUserActivity() {
+        document.body.classList.remove("cursor-hidden");
+        if (cursorTimer) clearTimeout(cursorTimer);
+        cursorTimer = setTimeout(() => {
+          document.body.classList.add("cursor-hidden");
+        }, CURSOR_IDLE_MS);
+      }
 
       document.addEventListener("pointerdown", (e) => {
+        if (e.button !== 0) return; // left button only
         e.preventDefault();
-        resetCursorTimer();
-        setActive(!active);
+
+        onUserActivity();
+
+        holding = true;
+        holdStart = performance.now();
+        showHoldAt(e.clientX, e.clientY);
+        startHoldLoop();
+      });
+
+      document.addEventListener("pointermove", (e) => {
+        onUserActivity();
+        if (holding) {
+          showHoldAt(e.clientX, e.clientY);
+        }
+      });
+
+      document.addEventListener("pointerup", (e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+
+        onUserActivity();
+
+        if (!holding) return;
+        holding = false;
+        stopHoldLoop();
+        hideHold();
+      });
+
+      document.addEventListener("pointercancel", () => {
+        if (!holding) return;
+        holding = false;
+        stopHoldLoop();
+        hideHold();
+      });
+
+      document.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
       });
 
       document.addEventListener("keydown", (e) => {
+        onUserActivity();
+
         if (e.code === "Space") {
           e.preventDefault();
-          resetCursorTimer();
           setActive(!active);
           return;
         }
 
         if (e.key === "f" || e.key === "F") {
           e.preventDefault();
-          resetCursorTimer();
           toggleFullscreen();
           return;
         }
 
         if (e.key === "v" || e.key === "V") {
           e.preventDefault();
-          resetCursorTimer();
           toggleDotOnActive();
         }
       });
@@ -430,8 +560,7 @@
           });
         });
 
-        resetCursorTimer();
-
+        onUserActivity();
         await requestLock();
       })();
 
