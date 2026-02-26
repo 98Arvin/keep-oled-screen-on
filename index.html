@@ -529,6 +529,12 @@
         hideHold();
       });
 
+      document.addEventListener("visibilitychange", async () => {
+        if (document.visibilityState === "visible" && active) {
+          await requestLock();
+        }
+      });
+
       document.addEventListener("contextmenu", (e) => {
         e.preventDefault();
         onUserActivity();
