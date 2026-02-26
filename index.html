@@ -24,6 +24,8 @@
 
     body.cursor-hidden { cursor: none; }
 
+    body.dim { filter: brightness(0.25); transition: filter 600ms ease; }
+
     #dot {
       position: fixed;
       left: 0;
@@ -215,6 +217,9 @@
       const LS_KEY = "showDotOnActive";
       let showDotOnActive = (localStorage.getItem(LS_KEY) ?? "1") === "1";
 
+      const LS_DIM_KEY = "dimMode";
+      let dimMode = (localStorage.getItem(LS_DIM_KEY) ?? "0") === "1";
+
       let cursorTimer = null;
 
       let holding = false;
@@ -330,6 +335,7 @@
               F = fullscreen<br>
               V = dot on/off<br>
               H = hint<br>
+              D = dim<br>
               <div class="countdown" id="c">3</div>
             </span>
           </div>
@@ -429,6 +435,13 @@
 
         applyDotMode(true);
         showTinyToast(showDotOnActive ? "DOT ON" : "DOT OFF");
+      }
+
+      function toggleDim() {
+        dimMode = !dimMode;
+        localStorage.setItem(LS_DIM_KEY, dimMode ? "1" : "0");
+        document.body.classList.toggle("dim", dimMode);
+        showTinyToast(dimMode ? "DIM ON" : "DIM OFF");
       }
 
       async function toggleFullscreen() {
@@ -550,6 +563,12 @@
           return;
         }
 
+        if (e.key === "d" || e.key === "D") {
+          e.preventDefault();
+          toggleDim();
+          return;
+        }
+
         if (e.key === "f" || e.key === "F") {
           e.preventDefault();
           toggleFullscreen();
@@ -571,6 +590,7 @@
 
       (async function init() {
         document.body.classList.toggle("active", active);
+        document.body.classList.toggle("dim", dimMode);
 
         applyDotMode(true);
         progressiveIntro();
