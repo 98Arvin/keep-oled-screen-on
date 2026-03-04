@@ -252,7 +252,7 @@
         lastTime = performance.now();
 
         function loop(now) {
-          const dt = now - lastTime;
+          const dt = Math.min(now - lastTime, 100);
           lastTime = now;
 
           x += vx * dt;
@@ -562,8 +562,10 @@
       });
 
       document.addEventListener("visibilitychange", async () => {
-        if (document.visibilityState === "visible" && active && !wakeLock) {
-          await requestLock();
+        if (document.visibilityState === "visible") {
+          lastTime = performance.now();
+          if (!animFrame) startDrift();
+          if (active && !wakeLock) await requestLock();
         }
       });
 
