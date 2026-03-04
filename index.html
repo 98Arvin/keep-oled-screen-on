@@ -246,8 +246,12 @@
         x = rand(50, window.innerWidth - 50);
         y = rand(50, window.innerHeight - 50);
 
-        vx = rand(-0.02, 0.02);
-        vy = rand(-0.02, 0.02);
+        function randVel() {
+          const s = rand(0.012, 0.02);
+          return Math.random() < 0.5 ? -s : s;
+        }
+        vx = randVel();
+        vy = randVel();
 
         lastTime = performance.now();
 
@@ -258,8 +262,10 @@
           x += vx * dt;
           y += vy * dt;
 
-          if (x <= 0 || x >= window.innerWidth - DOT_SIZE) vx *= -1;
-          if (y <= 0 || y >= window.innerHeight - DOT_SIZE) vy *= -1;
+          if (x < 0) { x = 0; vx = Math.abs(vx); }
+          else if (x > window.innerWidth - DOT_SIZE) { x = window.innerWidth - DOT_SIZE; vx = -Math.abs(vx); }
+          if (y < 0) { y = 0; vy = Math.abs(vy); }
+          else if (y > window.innerHeight - DOT_SIZE) { y = window.innerHeight - DOT_SIZE; vy = -Math.abs(vy); }
 
           place(x, y);
           animFrame = requestAnimationFrame(loop);
@@ -567,6 +573,11 @@
           if (!animFrame) startDrift();
           if (active && !wakeLock) await requestLock();
         }
+      });
+
+      window.addEventListener("resize", () => {
+        x = Math.min(x, window.innerWidth - DOT_SIZE);
+        y = Math.min(y, window.innerHeight - DOT_SIZE);
       });
 
       document.addEventListener("contextmenu", (e) => {
