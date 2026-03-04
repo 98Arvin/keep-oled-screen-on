@@ -407,6 +407,8 @@
         }, 600);
       }
 
+      let wakeLockFailed = false;
+
       async function requestLock() {
         if (!navigator.wakeLock || wakeLock || wakeLockPending) return false;
         wakeLockPending = true;
@@ -417,6 +419,7 @@
             return false;
           }
           wakeLock = sentinel;
+          wakeLockFailed = false;
           sentinel.addEventListener("release", () => {
             if (wakeLock !== sentinel) return;
             wakeLock = null;
@@ -426,6 +429,10 @@
           });
           return true;
         } catch {
+          if (!wakeLockFailed) {
+            wakeLockFailed = true;
+            showTinyToast("LOCK FAILED");
+          }
           return false;
         } finally {
           wakeLockPending = false;
@@ -638,6 +645,14 @@
 
         onUserActivity();
         await requestLock();
+
+        setInterval(() => {
+          if (active && !wakeLock && document.visibilityState === "visible") requestLock();
+        }, 30000);
+
+        window.addEventListener("pageshow", (e) => {
+          if (e.persisted && active && !wakeLock) requestLock();
+        });
 
         if ("serviceWorker" in navigator) {
           navigator.serviceWorker.register("/sw.js");
