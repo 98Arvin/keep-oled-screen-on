@@ -569,8 +569,8 @@
 
       document.addEventListener("visibilitychange", async () => {
         if (document.visibilityState === "visible") {
-          lastTime = performance.now();
-          if (!animFrame) startDrift();
+          stopDrift();
+          startDrift();
           if (active && !wakeLock) await requestLock();
         }
       });
