@@ -25,7 +25,7 @@
 
     body.cursor-hidden { cursor: none; }
 
-    body.dim { filter: brightness(0.25); transition: filter 600ms ease; }
+    body.brightness { filter: brightness(0.25); transition: filter 600ms ease; }
 
     #dot {
       position: fixed;
@@ -219,8 +219,8 @@
       const LS_KEY = "showDotOnActive";
       let showDotOnActive = (localStorage.getItem(LS_KEY) ?? "1") === "1";
 
-      const LS_DIM_KEY = "dimMode";
-      let dimMode = (localStorage.getItem(LS_DIM_KEY) ?? "0") === "1";
+      const LS_BRIGHTNESS_KEY = "brightnessMode";
+      let brightnessMode = (localStorage.getItem(LS_BRIGHTNESS_KEY) ?? "0") === "1";
 
       let cursorTimer = null;
 
@@ -340,10 +340,10 @@
             <span class="reserve" id="restHint">
               Hold click = toggle<br>
               Space = toggle<br>
+              B = brightness<br>
               F = fullscreen<br>
-              V = dot on/off<br>
               H = hint<br>
-              D = dim<br>
+              V = dot on/off<br>
               <div class="countdown" id="c">3</div>
             </span>
           </div>
@@ -469,11 +469,11 @@
         showTinyToast(showDotOnActive ? "DOT ON" : "DOT OFF");
       }
 
-      function toggleDim() {
-        dimMode = !dimMode;
-        localStorage.setItem(LS_DIM_KEY, dimMode ? "1" : "0");
-        document.body.classList.toggle("dim", dimMode);
-        showTinyToast(dimMode ? "DIM ON" : "DIM OFF");
+      function toggleBrightness() {
+        brightnessMode = !brightnessMode;
+        localStorage.setItem(LS_BRIGHTNESS_KEY, brightnessMode ? "1" : "0");
+        document.body.classList.toggle("brightness", brightnessMode);
+        showTinyToast(brightnessMode ? "BRIGHTNESS LOW" : "BRIGHTNESS HIGH");
       }
 
       async function toggleFullscreen() {
@@ -602,9 +602,9 @@
           return;
         }
 
-        if (e.key === "d" || e.key === "D") {
+        if (e.key === "b" || e.key === "B") {
           e.preventDefault();
-          toggleDim();
+          toggleBrightness();
           return;
         }
 
@@ -629,7 +629,7 @@
 
       (async function init() {
         document.body.classList.toggle("active", active);
-        document.body.classList.toggle("dim", dimMode);
+        document.body.classList.toggle("brightness", brightnessMode);
 
         applyDotMode(true);
         progressiveIntro();
