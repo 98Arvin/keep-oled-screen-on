@@ -1,7 +1,7 @@
 {
   "name": "OLED - Keep Screen Awake",
   "short_name": "OLED",
-  "description": "Keeps your OLED screen awake with a moving dot",
+  "description": "Keeps your OLED screen awake with brief status blips",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",

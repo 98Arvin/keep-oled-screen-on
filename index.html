@@ -60,28 +60,25 @@
       color: #000;
       letter-spacing: 0.4px;
       transition:
-        transform 900ms linear,
-        opacity 600ms ease,
+        opacity 220ms ease,
         background-color 600ms ease;
     }
 
     body.boot #dot {
       transition:
-        transform 900ms linear,
         opacity 1800ms ease,
         background-color 600ms ease;
     }
 
     body.ready #dot {
       transition:
-        transform 900ms linear,
-        opacity 600ms ease,
+        opacity 220ms ease,
         background-color 600ms ease;
     }
 
-    body.ready #dot { opacity: var(--dot-opacity); }
-    body.ready.active #dot { opacity: 0; }
-    body.ready.active.show-dot #dot { opacity: var(--dot-opacity); }
+    body.ready #dot { opacity: 0; }
+    body.ready.dot-visible:not(.active) #dot,
+    body.ready.active.show-dot.dot-visible #dot { opacity: var(--dot-opacity); }
 
     #status {
       position: fixed;
@@ -229,10 +226,12 @@
       const holdFg = holdEl.querySelector(".fg");
 
       const DOT_SIZE = 34;
-      const DOT_MOVE_MS = 12000;
-      const DOT_MOVE_JITTER_MS = 4000;
+      const DOT_BLIP_MS = 450;
+      const DOT_INTERVAL_MS = 2200;
+      const DOT_INTERVAL_JITTER_MS = 1200;
 
-      let dotMoveTimer = null;
+      let dotTimer = null;
+      let dotHideTimer = null;
       let x = 100;
       let y = 100;
 
@@ -272,7 +271,7 @@
         };
       }
 
-      function shouldMoveDot() {
+      function shouldRunDot() {
         return document.visibilityState === "visible" && (!active || showDotOnActive);
       }
 
@@ -283,24 +282,47 @@
         place(x, y);
       }
 
-      function scheduleDotMove(delay) {
-        dotMoveTimer = setTimeout(() => {
-          dotMoveTimer = null;
-          if (!shouldMoveDot()) return;
-          moveDot();
-          scheduleDotMove(DOT_MOVE_MS + rand(0, DOT_MOVE_JITTER_MS));
+      function setDotVisible(visible) {
+        document.body.classList.toggle("dot-visible", visible);
+      }
+
+      function scheduleDotBlip(delay) {
+        dotTimer = setTimeout(() => {
+          dotTimer = null;
+          showDotBlip();
         }, delay);
       }
 
-      function startDrift() {
-        if (dotMoveTimer || !shouldMoveDot()) return;
+      function showDotBlip() {
+        if (!shouldRunDot()) {
+          setDotVisible(false);
+          return;
+        }
+
         moveDot();
-        scheduleDotMove(DOT_MOVE_MS + rand(0, DOT_MOVE_JITTER_MS));
+        setDotVisible(true);
+
+        if (dotHideTimer) clearTimeout(dotHideTimer);
+        dotHideTimer = setTimeout(() => {
+          dotHideTimer = null;
+          setDotVisible(false);
+          if (shouldRunDot()) {
+            scheduleDotBlip(DOT_INTERVAL_MS + rand(0, DOT_INTERVAL_JITTER_MS));
+          }
+        }, DOT_BLIP_MS);
       }
 
-      function stopDrift() {
-        if (dotMoveTimer) clearTimeout(dotMoveTimer);
-        dotMoveTimer = null;
+      function startDotCycle() {
+        if (dotTimer || dotHideTimer || !shouldRunDot()) return;
+        showDotBlip();
+      }
+
+      function stopDotCycle() {
+        if (dotTimer) clearTimeout(dotTimer);
+        if (dotHideTimer) clearTimeout(dotHideTimer);
+        dotTimer = null;
+        dotHideTimer = null;
+        setDotVisible(false);
       }
 
       function stopCountdown() {
@@ -340,7 +362,7 @@
           dot.textContent = "OFF";
           document.body.classList.remove("show-dot");
 
-          if (!dotMoveTimer) startDrift();
+          startDotCycle();
           return;
         }
 
@@ -348,11 +370,11 @@
           dot.textContent = "ON";
           document.body.classList.add("show-dot");
 
-          if (!dotMoveTimer) startDrift();
+          startDotCycle();
         } else {
           dot.textContent = "ON";
           document.body.classList.remove("show-dot");
-          stopDrift();
+          stopDotCycle();
         }
       }
 
@@ -367,7 +389,7 @@
               B = brightness<br>
               F = fullscreen<br>
               H = hint<br>
-              V = dot on/off<br>
+              V = status blip<br>
               <div class="countdown" id="c">3</div>
             </span>
           </div>
@@ -490,7 +512,7 @@
         localStorage.setItem(LS_KEY, showDotOnActive ? "1" : "0");
 
         applyDotMode();
-        showTinyToast(showDotOnActive ? "DOT ON" : "DOT OFF");
+        showTinyToast(showDotOnActive ? "BLIP ON" : "BLIP OFF");
       }
 
       function toggleBrightness() {
@@ -600,7 +622,7 @@
 
       document.addEventListener("visibilitychange", async () => {
         if (document.visibilityState === "hidden") {
-          stopDrift();
+          stopDotCycle();
           return;
         }
 

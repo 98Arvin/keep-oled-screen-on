@@ -1,4 +1,4 @@
-const CACHE = 'oled-v1';
+const CACHE = 'oled-v2';
 const ASSETS = ['/', '/index.html', '/circle-256.svg', '/manifest.json', '/circle-256.ico'];
 
 self.addEventListener('install', e => {

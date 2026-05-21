@@ -10,7 +10,7 @@ Minimal, OLED friendly web page to keep your screen awake
 - Smooth onboarding hint with progressive reveal
 - Subtle fade transitions for all state changes
 - Screen stays awake using Wake Lock API (when supported)
-- Small drifting orange dot with "OFF" when inactive (burn-in safe)
+- Brief random orange status blips instead of a persistent indicator (OLED safe)
 
 ## Live
 
