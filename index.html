@@ -9,7 +9,22 @@
           async src="//gc.zgo.at/count.js"></script>
   <title>OLED - Keep Screen Awake</title>
   <style>
-    :root { color-scheme: dark; }
+    :root {
+      color-scheme: dark;
+      --orange: #ff7a00;
+      --dot-opacity: 0.9;
+      --text-opacity: 0.9;
+      --muted-opacity: 0.7;
+      --ring-bg: rgba(255, 122, 0, 0.18);
+    }
+
+    body.brightness {
+      --orange: #5a2a00;
+      --dot-opacity: 0.25;
+      --text-opacity: 0.35;
+      --muted-opacity: 0.28;
+      --ring-bg: rgba(90, 42, 0, 0.12);
+    }
 
     html, body {
       margin: 0;
@@ -25,8 +40,6 @@
 
     body.cursor-hidden { cursor: none; }
 
-    body.brightness { filter: brightness(0.25); transition: filter 600ms ease; }
-
     #dot {
       position: fixed;
       left: 0;
@@ -34,12 +47,11 @@
       width: 34px;
       height: 34px;
       border-radius: 999px;
-      background: #ff7a00;
+      background: var(--orange);
       opacity: 0;
       display: grid;
       place-items: center;
       transform: translate3d(0,0,0);
-      will-change: transform, opacity;
       pointer-events: none;
       font-family: helvetica;
       font-size: 10px;
@@ -47,15 +59,29 @@
       text-shadow: 0 0 0.0px #000, 0.4px 0 #000, -0.4px 0 #000, 0 0.4px #000, 0 -0.4px #000;
       color: #000;
       letter-spacing: 0.4px;
-      transition: opacity 600ms ease;
+      transition:
+        transform 900ms linear,
+        opacity 600ms ease,
+        background-color 600ms ease;
     }
 
-    body.boot #dot { transition: opacity 1800ms ease; }
-    body.ready #dot { transition: opacity 600ms ease; }
+    body.boot #dot {
+      transition:
+        transform 900ms linear,
+        opacity 1800ms ease,
+        background-color 600ms ease;
+    }
 
-    body.ready #dot { opacity: 0.9; }
+    body.ready #dot {
+      transition:
+        transform 900ms linear,
+        opacity 600ms ease,
+        background-color 600ms ease;
+    }
+
+    body.ready #dot { opacity: var(--dot-opacity); }
     body.ready.active #dot { opacity: 0; }
-    body.ready.active.show-dot #dot { opacity: 0.9; }
+    body.ready.active.show-dot #dot { opacity: var(--dot-opacity); }
 
     #status {
       position: fixed;
@@ -63,14 +89,14 @@
       display: grid;
       place-items: center;
       font-family: monospace;
-      color: #ff7a00;
+      color: var(--orange);
       opacity: 0;
       pointer-events: none;
       text-align: center;
       transition: opacity 600ms ease;
     }
 
-    #status.show { opacity: 0.9; }
+    #status.show { opacity: var(--text-opacity); }
 
     #status .main {
       font-size: 44px;
@@ -80,7 +106,7 @@
     #status .hint {
       margin-top: 10px;
       font-size: 12px;
-      opacity: 0.7;
+      opacity: var(--muted-opacity);
     }
 
     #status .hint .primary {
@@ -105,14 +131,14 @@
       bottom: 22px;
       transform: translate3d(-50%, 0, 0);
       font-family: monospace;
-      color: #ff7a00;
+      color: var(--orange);
       opacity: 0;
       pointer-events: none;
       transition: opacity 600ms ease;
       text-align: center;
     }
 
-    #toast.show { opacity: 0.9; }
+    #toast.show { opacity: var(--text-opacity); }
 
     #toast .main {
       font-size: 12px;
@@ -142,10 +168,9 @@
       opacity: 0;
       pointer-events: none;
       transition: opacity 150ms ease;
-      will-change: transform, opacity;
     }
 
-    #hold.show { opacity: 0.9; }
+    #hold.show { opacity: var(--text-opacity); }
 
     #hold svg {
       width: 56px;
@@ -157,13 +182,14 @@
 
     #hold .bg {
       fill: none;
-      stroke: rgba(255, 122, 0, 0.18);
+      stroke: var(--ring-bg);
       stroke-width: 5;
     }
 
     #hold .fg {
       fill: none;
-      stroke: #ff7a00;
+      stroke: var(--orange);
+      transition: stroke 600ms ease;
       stroke-width: 5;
       stroke-linecap: round;
       stroke-dasharray: 1 999;
@@ -203,11 +229,10 @@
       const holdFg = holdEl.querySelector(".fg");
 
       const DOT_SIZE = 34;
+      const DOT_MOVE_MS = 12000;
+      const DOT_MOVE_JITTER_MS = 4000;
 
-      let animFrame = null;
-      let lastTime = null;
-      let vx = 0.02;
-      let vy = 0.015;
+      let dotMoveTimer = null;
       let x = 100;
       let y = 100;
 
@@ -240,43 +265,42 @@
         dot.style.transform = "translate3d(" + xPos + "px," + yPos + "px, 0)";
       }
 
+      function dotBounds() {
+        return {
+          maxX: Math.max(0, window.innerWidth - DOT_SIZE),
+          maxY: Math.max(0, window.innerHeight - DOT_SIZE)
+        };
+      }
+
+      function shouldMoveDot() {
+        return document.visibilityState === "visible" && (!active || showDotOnActive);
+      }
+
+      function moveDot() {
+        const bounds = dotBounds();
+        x = rand(0, bounds.maxX);
+        y = rand(0, bounds.maxY);
+        place(x, y);
+      }
+
+      function scheduleDotMove(delay) {
+        dotMoveTimer = setTimeout(() => {
+          dotMoveTimer = null;
+          if (!shouldMoveDot()) return;
+          moveDot();
+          scheduleDotMove(DOT_MOVE_MS + rand(0, DOT_MOVE_JITTER_MS));
+        }, delay);
+      }
+
       function startDrift() {
-        if (animFrame) return;
-
-        x = rand(50, window.innerWidth - 50);
-        y = rand(50, window.innerHeight - 50);
-
-        function randVel() {
-          const s = rand(0.012, 0.02);
-          return Math.random() < 0.5 ? -s : s;
-        }
-        vx = randVel();
-        vy = randVel();
-
-        lastTime = performance.now();
-
-        function loop(now) {
-          const dt = Math.min(now - lastTime, 100);
-          lastTime = now;
-
-          x += vx * dt;
-          y += vy * dt;
-
-          if (x < 0) { x = 0; vx = Math.abs(vx); }
-          else if (x > window.innerWidth - DOT_SIZE) { x = window.innerWidth - DOT_SIZE; vx = -Math.abs(vx); }
-          if (y < 0) { y = 0; vy = Math.abs(vy); }
-          else if (y > window.innerHeight - DOT_SIZE) { y = window.innerHeight - DOT_SIZE; vy = -Math.abs(vy); }
-
-          place(x, y);
-          animFrame = requestAnimationFrame(loop);
-        }
-
-        animFrame = requestAnimationFrame(loop);
+        if (dotMoveTimer || !shouldMoveDot()) return;
+        moveDot();
+        scheduleDotMove(DOT_MOVE_MS + rand(0, DOT_MOVE_JITTER_MS));
       }
 
       function stopDrift() {
-        if (animFrame) cancelAnimationFrame(animFrame);
-        animFrame = null;
+        if (dotMoveTimer) clearTimeout(dotMoveTimer);
+        dotMoveTimer = null;
       }
 
       function stopCountdown() {
@@ -311,12 +335,12 @@
         }, 100);
       }
 
-      function applyDotMode(skipDriftReset) {
+      function applyDotMode() {
         if (!active) {
           dot.textContent = "OFF";
           document.body.classList.remove("show-dot");
 
-          if (!animFrame && !skipDriftReset) startDrift();
+          if (!dotMoveTimer) startDrift();
           return;
         }
 
@@ -324,7 +348,7 @@
           dot.textContent = "ON";
           document.body.classList.add("show-dot");
 
-          if (!animFrame) startDrift();
+          if (!dotMoveTimer) startDrift();
         } else {
           dot.textContent = "ON";
           document.body.classList.remove("show-dot");
@@ -465,7 +489,7 @@
         showDotOnActive = !showDotOnActive;
         localStorage.setItem(LS_KEY, showDotOnActive ? "1" : "0");
 
-        applyDotMode(true);
+        applyDotMode();
         showTinyToast(showDotOnActive ? "DOT ON" : "DOT OFF");
       }
 
@@ -575,16 +599,20 @@
       });
 
       document.addEventListener("visibilitychange", async () => {
-        if (document.visibilityState === "visible") {
+        if (document.visibilityState === "hidden") {
           stopDrift();
-          startDrift();
-          if (active && !wakeLock) await requestLock();
+          return;
         }
+
+        applyDotMode();
+        if (active && !wakeLock) await requestLock();
       });
 
       window.addEventListener("resize", () => {
-        x = Math.min(x, window.innerWidth - DOT_SIZE);
-        y = Math.min(y, window.innerHeight - DOT_SIZE);
+        const bounds = dotBounds();
+        x = Math.min(x, bounds.maxX);
+        y = Math.min(y, bounds.maxY);
+        place(x, y);
       });
 
       document.addEventListener("contextmenu", (e) => {
@@ -631,7 +659,7 @@
         document.body.classList.toggle("active", active);
         document.body.classList.toggle("brightness", brightnessMode);
 
-        applyDotMode(true);
+        applyDotMode();
         progressiveIntro();
 
         document.body.classList.add("boot");
