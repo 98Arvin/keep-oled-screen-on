@@ -1,4 +1,4 @@
-const CACHE = 'oled-v2';
+const CACHE = 'oled-v3';
 const ASSETS = ['/', '/index.html', '/circle-256.svg', '/manifest.json', '/circle-256.ico'];
 
 self.addEventListener('install', e => {
@@ -8,11 +8,21 @@ self.addEventListener('install', e => {
 
 self.addEventListener('activate', e => {
   e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    )
+    (async () => {
+      const keys = await caches.keys();
+      const oldKeys = keys.filter(k => k !== CACHE);
+
+      await Promise.all(oldKeys.map(k => caches.delete(k)));
+      await self.clients.claim();
+
+      if (oldKeys.length === 0) return;
+
+      const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      await Promise.all(clients.map(client =>
+        client.navigate(client.url).catch(() => {})
+      ));
+    })()
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', e => {

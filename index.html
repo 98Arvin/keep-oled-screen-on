@@ -35,10 +35,15 @@
       -webkit-tap-highlight-color: transparent;
       user-select: none;
       outline: none;
-      cursor: default;
+      cursor: none;
     }
 
-    body.cursor-hidden { cursor: none; }
+    html,
+    body,
+    body * { cursor: none; }
+
+    body.cursor-visible,
+    body.cursor-visible * { cursor: default; }
 
     #dot {
       position: fixed;
@@ -575,11 +580,15 @@
       }
 
       function onUserActivity() {
-        document.body.classList.remove("cursor-hidden");
+        document.body.classList.add("cursor-visible");
         if (cursorTimer) clearTimeout(cursorTimer);
-        cursorTimer = setTimeout(() => {
-          document.body.classList.add("cursor-hidden");
-        }, CURSOR_IDLE_MS);
+        cursorTimer = setTimeout(hideCursor, CURSOR_IDLE_MS);
+      }
+
+      function hideCursor() {
+        document.body.classList.remove("cursor-visible");
+        if (cursorTimer) clearTimeout(cursorTimer);
+        cursorTimer = null;
       }
 
       document.addEventListener("pointerdown", (e) => {
@@ -627,6 +636,7 @@
         }
 
         applyDotMode();
+        hideCursor();
         if (active && !wakeLock) await requestLock();
       });
 
@@ -693,7 +703,7 @@
           });
         });
 
-        onUserActivity();
+        hideCursor();
         await requestLock();
 
         setInterval(() => {
@@ -701,6 +711,7 @@
         }, 30000);
 
         window.addEventListener("pageshow", (e) => {
+          hideCursor();
           if (e.persisted && active && !wakeLock) requestLock();
         });
 
