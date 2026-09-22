@@ -12,7 +12,6 @@ Minimal, OLED-friendly web page that keeps the screen awake while the page is op
 - Color is remembered locally
 - `B` toggles a moderate low-brightness mode and remembers the setting
 - `F` toggles fullscreen
-- `H` shows the controls
 - No service-worker/offline cache
 
 ## Live
