@@ -185,6 +185,23 @@
       background: transparent;
     }
 
+    #resetColor {
+      display: block;
+      margin: 14px auto 0;
+      padding: 8px 12px;
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--accent);
+      font: inherit;
+      cursor: pointer;
+    }
+
+    #resetColor:hover {
+      background: var(--accent);
+      color: #000;
+    }
+
     #colorCard .hint {
       margin-top: 12px;
       font-size: 11px;
@@ -209,6 +226,7 @@
     <div id="colorCard">
       <div class="title">COLOR</div>
       <input id="colorPicker" type="color" value="#ff7a00" aria-label="Choose accent color" />
+      <button id="resetColor" type="button">RESET DEFAULT</button>
       <div class="hint">Tap outside to close</div>
     </div>
   </div>
@@ -219,6 +237,7 @@
       const HOLD_MS = 700;
       const HINT_SHOW_MS = 3000;
 
+      const DEFAULT_COLOR = "#ff7a00";
       const LS_COLOR_KEY = "accentColor";
       const LS_BRIGHTNESS_KEY = "brightnessMode";
 
@@ -233,6 +252,7 @@
       const holdFg = holdEl.querySelector(".fg");
       const colorPanel = document.getElementById("colorPanel");
       const colorPicker = document.getElementById("colorPicker");
+      const resetColor = document.getElementById("resetColor");
 
       const DOT_SIZE = 34;
       const DOT_BLIP_MS = 450;
@@ -256,7 +276,7 @@
       const CIRC = 2 * Math.PI * R;
 
       let brightnessMode = (localStorage.getItem(LS_BRIGHTNESS_KEY) ?? "0") === "1";
-      let accentColor = localStorage.getItem(LS_COLOR_KEY) || "#ff7a00";
+      let accentColor = localStorage.getItem(LS_COLOR_KEY) || DEFAULT_COLOR;
 
       function rand(min, max) {
         return Math.random() * (max - min) + min;
@@ -515,6 +535,11 @@
 
       colorPicker.addEventListener("input", (e) => {
         applyColor(e.target.value, true);
+      });
+
+      resetColor.addEventListener("click", () => {
+        localStorage.removeItem(LS_COLOR_KEY);
+        applyColor(DEFAULT_COLOR, false);
       });
 
       colorPanel.addEventListener("click", (e) => {
