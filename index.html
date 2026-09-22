@@ -589,6 +589,12 @@
       }
 
       (async function init() {
+        const currentUrl = new URL(window.location.href);
+        if (currentUrl.searchParams.has("_cache_reset")) {
+          currentUrl.searchParams.delete("_cache_reset");
+          history.replaceState(null, "", currentUrl.pathname + currentUrl.search + currentUrl.hash);
+        }
+
         applyColor(accentColor, false);
         document.body.classList.toggle("brightness-low", brightnessMode);
 
