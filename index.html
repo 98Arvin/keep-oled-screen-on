@@ -75,11 +75,6 @@
 
     #status.show { opacity: var(--text-opacity); }
 
-    #status .main {
-      font-size: 44px;
-      letter-spacing: 2px;
-    }
-
     #status .hint {
       margin-top: 10px;
       font-size: 12px;
@@ -605,7 +600,6 @@
       document.addEventListener("contextmenu", (e) => {
         e.preventDefault();
         onUserActivity();
-        showHintFor(HINT_SHOW_MS);
       });
 
       document.addEventListener("keydown", (e) => {
