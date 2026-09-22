@@ -227,7 +227,10 @@
       <div class="title">COLOR</div>
       <input id="colorPicker" type="color" value="#ff7a00" aria-label="Choose accent color" />
       <button id="resetColor" type="button">RESET DEFAULT</button>
-      <div class="hint">Tap outside to close</div>
+      <div class="hint">
+        Tap outside to close<br>
+        <span id="colorCountdown">Auto-closes in 15s</span>
+      </div>
     </div>
   </div>
 
@@ -236,6 +239,7 @@
       const CURSOR_IDLE_MS = 500;
       const HOLD_MS = 700;
       const HINT_SHOW_MS = 3000;
+      const COLOR_PANEL_IDLE_MS = 15000;
 
       const DEFAULT_COLOR = "#ff7a00";
       const LS_COLOR_KEY = "accentColor";
@@ -253,6 +257,7 @@
       const colorPanel = document.getElementById("colorPanel");
       const colorPicker = document.getElementById("colorPicker");
       const resetColor = document.getElementById("resetColor");
+      const colorCountdown = document.getElementById("colorCountdown");
 
       const DOT_SIZE = 34;
       const DOT_BLIP_MS = 450;
@@ -266,6 +271,9 @@
       let toastHide = null;
       let overlayHide = null;
       let cursorTimer = null;
+      let colorPanelIdleTimer = null;
+      let colorPanelCountdownTimer = null;
+      let colorPanelDeadline = 0;
 
       let holding = false;
       let holdRAF = null;
@@ -430,13 +438,39 @@
         } catch (_) {}
       }
 
+      function stopColorPanelTimer() {
+        if (colorPanelIdleTimer) clearTimeout(colorPanelIdleTimer);
+        if (colorPanelCountdownTimer) clearInterval(colorPanelCountdownTimer);
+        colorPanelIdleTimer = null;
+        colorPanelCountdownTimer = null;
+      }
+
+      function updateColorPanelCountdown() {
+        if (!colorPanel.classList.contains("show")) return;
+        const secondsLeft = Math.max(0, Math.ceil((colorPanelDeadline - Date.now()) / 1000));
+        colorCountdown.textContent = "Auto-closes in " + secondsLeft + "s";
+      }
+
+      function resetColorPanelTimer() {
+        if (!colorPanel.classList.contains("show")) return;
+
+        stopColorPanelTimer();
+        colorPanelDeadline = Date.now() + COLOR_PANEL_IDLE_MS;
+        updateColorPanelCountdown();
+
+        colorPanelCountdownTimer = setInterval(updateColorPanelCountdown, 250);
+        colorPanelIdleTimer = setTimeout(closeColorPanel, COLOR_PANEL_IDLE_MS);
+      }
+
       function openColorPanel() {
         stopDotCycle();
         colorPanel.classList.add("show");
         document.body.classList.add("cursor-visible");
+        resetColorPanelTimer();
       }
 
       function closeColorPanel() {
+        stopColorPanelTimer();
         colorPanel.classList.remove("show");
         hideCursor();
         startDotCycle();
@@ -535,11 +569,17 @@
 
       colorPicker.addEventListener("input", (e) => {
         applyColor(e.target.value, true);
+        resetColorPanelTimer();
       });
 
       resetColor.addEventListener("click", () => {
         localStorage.removeItem(LS_COLOR_KEY);
         applyColor(DEFAULT_COLOR, false);
+        resetColorPanelTimer();
+      });
+
+      colorPanel.addEventListener("pointerdown", (e) => {
+        if (e.target !== colorPanel) resetColorPanelTimer();
       });
 
       colorPanel.addEventListener("click", (e) => {
