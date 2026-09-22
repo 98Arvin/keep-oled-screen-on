@@ -1,16 +1,19 @@
 # Keep OLED Screen On
 
-Minimal, OLED friendly web page to keep your screen awake
+Minimal, OLED-friendly web page that keeps the screen awake while the page is open.
 
 ## Features
 
-- Pure black background (OLED safe)
-- Click anywhere to toggle on/off
-- Space or F toggles fullscreen
-- Smooth onboarding hint with progressive reveal
-- Subtle fade transitions for all state changes
-- Screen stays awake using Wake Lock API (when supported)
-- Brief random orange status blips instead of a persistent indicator (OLED safe)
+- Always active while the page is visible
+- Pure black background
+- Screen Wake Lock API (when supported)
+- Brief moving status blips to avoid a fixed OLED element
+- Hold click/touch to choose the accent color
+- Color is remembered locally
+- `B` toggles a moderate low-brightness mode and remembers the setting
+- `F` toggles fullscreen
+- `H` shows the controls
+- No service-worker/offline cache
 
 ## Live
 
