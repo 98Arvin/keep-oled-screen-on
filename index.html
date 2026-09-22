@@ -3,6 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <link rel="icon" type="image/x-icon" href="circle-256.ico" />
   <link rel="manifest" href="manifest.json" />
   <script data-goatcounter="https://oled.goatcounter.com/count"
@@ -11,19 +14,16 @@
   <style>
     :root {
       color-scheme: dark;
-      --orange: #ff7a00;
+      --accent: #ff7a00;
       --dot-opacity: 0.9;
       --text-opacity: 0.9;
       --muted-opacity: 0.7;
-      --ring-bg: rgba(255, 122, 0, 0.18);
     }
 
-    body.brightness {
-      --orange: #5a2a00;
-      --dot-opacity: 0.25;
-      --text-opacity: 0.35;
-      --muted-opacity: 0.28;
-      --ring-bg: rgba(90, 42, 0, 0.12);
+    body.brightness-low {
+      --dot-opacity: 0.55;
+      --text-opacity: 0.65;
+      --muted-opacity: 0.5;
     }
 
     html, body {
@@ -38,9 +38,7 @@
       cursor: none;
     }
 
-    html,
-    body,
-    body * { cursor: none; }
+    html, body, body * { cursor: none; }
 
     body.cursor-visible,
     body.cursor-visible * { cursor: default; }
@@ -52,38 +50,15 @@
       width: 34px;
       height: 34px;
       border-radius: 999px;
-      background: var(--orange);
+      background: var(--accent);
       opacity: 0;
-      display: grid;
-      place-items: center;
       transform: translate3d(0,0,0);
       pointer-events: none;
-      font-family: helvetica;
-      font-size: 10px;
-      font-weight: 7000;
-      text-shadow: 0 0 0.0px #000, 0.4px 0 #000, -0.4px 0 #000, 0 0.4px #000, 0 -0.4px #000;
-      color: #000;
-      letter-spacing: 0.4px;
-      transition:
-        opacity 220ms ease,
-        background-color 600ms ease;
+      transition: opacity 220ms ease, background-color 300ms ease;
     }
 
-    body.boot #dot {
-      transition:
-        opacity 1800ms ease,
-        background-color 600ms ease;
-    }
-
-    body.ready #dot {
-      transition:
-        opacity 220ms ease,
-        background-color 600ms ease;
-    }
-
-    body.ready #dot { opacity: 0; }
-    body.ready.dot-visible:not(.active) #dot,
-    body.ready.active.show-dot.dot-visible #dot { opacity: var(--dot-opacity); }
+    body.boot #dot { transition: opacity 1800ms ease, background-color 300ms ease; }
+    body.ready.dot-visible #dot { opacity: var(--dot-opacity); }
 
     #status {
       position: fixed;
@@ -91,11 +66,11 @@
       display: grid;
       place-items: center;
       font-family: monospace;
-      color: var(--orange);
+      color: var(--accent);
       opacity: 0;
       pointer-events: none;
       text-align: center;
-      transition: opacity 600ms ease;
+      transition: opacity 600ms ease, color 300ms ease;
     }
 
     #status.show { opacity: var(--text-opacity); }
@@ -115,16 +90,6 @@
       font-size: 16px;
       display: inline-block;
       margin-bottom: 16px;
-      opacity: 0;
-      transition: opacity 600ms ease;
-    }
-
-    #status.show .hint .primary { opacity: 1; }
-
-    #status .countdown {
-      margin-top: 10px;
-      font-size: 18px;
-      opacity: 0.4;
     }
 
     #toast {
@@ -133,10 +98,10 @@
       bottom: 22px;
       transform: translate3d(-50%, 0, 0);
       font-family: monospace;
-      color: var(--orange);
+      color: var(--accent);
       opacity: 0;
       pointer-events: none;
-      transition: opacity 600ms ease;
+      transition: opacity 300ms ease, color 300ms ease;
       text-align: center;
     }
 
@@ -148,18 +113,6 @@
       opacity: 0.85;
     }
 
-    .reserve {
-      visibility: hidden;
-      opacity: 0;
-      transition: opacity 600ms ease;
-    }
-
-    .reveal {
-      visibility: visible;
-      opacity: 1;
-    }
-
-    /* hold-to-toggle ring */
     #hold {
       position: fixed;
       left: 0;
@@ -179,29 +132,69 @@
       height: 56px;
       display: block;
       transform: rotate(-90deg);
-      filter: drop-shadow(0 0 0.25px rgba(0,0,0,0.6));
     }
 
-    #hold .bg {
-      fill: none;
-      stroke: var(--ring-bg);
-      stroke-width: 5;
-    }
-
+    #hold .bg,
     #hold .fg {
       fill: none;
-      stroke: var(--orange);
-      transition: stroke 600ms ease;
+      stroke: var(--accent);
       stroke-width: 5;
+    }
+
+    #hold .bg { opacity: 0.2; }
+
+    #hold .fg {
       stroke-linecap: round;
       stroke-dasharray: 1 999;
       stroke-dashoffset: 0;
+    }
+
+    #colorPanel {
+      position: fixed;
+      inset: 0;
+      display: none;
+      place-items: center;
+      background: rgba(0,0,0,0.72);
+      z-index: 10;
+      font-family: monospace;
+      color: var(--accent);
+    }
+
+    #colorPanel.show { display: grid; }
+
+    #colorCard {
+      min-width: 220px;
+      padding: 22px;
+      border: 1px solid var(--accent);
+      border-radius: 14px;
+      background: #050505;
+      text-align: center;
+      box-shadow: 0 0 30px rgba(0,0,0,0.7);
+    }
+
+    #colorCard .title {
+      margin-bottom: 14px;
+      letter-spacing: 2px;
+    }
+
+    #colorPicker {
+      width: 120px;
+      height: 56px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+    }
+
+    #colorCard .hint {
+      margin-top: 12px;
+      font-size: 11px;
+      opacity: var(--muted-opacity);
     }
   </style>
 </head>
 <body tabindex="0">
 
-  <div id="dot">OFF</div>
+  <div id="dot"></div>
   <div id="status"></div>
   <div id="toast"></div>
 
@@ -212,23 +205,34 @@
     </svg>
   </div>
 
+  <div id="colorPanel">
+    <div id="colorCard">
+      <div class="title">COLOR</div>
+      <input id="colorPicker" type="color" value="#ff7a00" aria-label="Choose accent color" />
+      <div class="hint">Tap outside to close</div>
+    </div>
+  </div>
+
   <script>
     (function () {
-
       const CURSOR_IDLE_MS = 500;
       const HOLD_MS = 700;
       const HINT_SHOW_MS = 3000;
 
+      const LS_COLOR_KEY = "accentColor";
+      const LS_BRIGHTNESS_KEY = "brightnessMode";
+
       let wakeLock = null;
       let wakeLockPending = false;
-      let active = true;
+      let wakeLockFailed = false;
 
       const dot = document.getElementById("dot");
       const statusEl = document.getElementById("status");
       const toastEl = document.getElementById("toast");
-
       const holdEl = document.getElementById("hold");
       const holdFg = holdEl.querySelector(".fg");
+      const colorPanel = document.getElementById("colorPanel");
+      const colorPicker = document.getElementById("colorPicker");
 
       const DOT_SIZE = 34;
       const DOT_BLIP_MS = 450;
@@ -239,18 +243,8 @@
       let dotHideTimer = null;
       let x = 100;
       let y = 100;
-
-      let countdownInterval = null;
-      let introTimeout = null;
-      let hideTimeout = null;
       let toastHide = null;
-
-      const LS_KEY = "showDotOnActive";
-      let showDotOnActive = (localStorage.getItem(LS_KEY) ?? "1") === "1";
-
-      const LS_BRIGHTNESS_KEY = "brightnessMode";
-      let brightnessMode = (localStorage.getItem(LS_BRIGHTNESS_KEY) ?? "0") === "1";
-
+      let overlayHide = null;
       let cursorTimer = null;
 
       let holding = false;
@@ -261,8 +255,23 @@
       const R = 20;
       const CIRC = 2 * Math.PI * R;
 
+      let brightnessMode = (localStorage.getItem(LS_BRIGHTNESS_KEY) ?? "0") === "1";
+      let accentColor = localStorage.getItem(LS_COLOR_KEY) || "#ff7a00";
+
       function rand(min, max) {
         return Math.random() * (max - min) + min;
+      }
+
+      function isValidHexColor(value) {
+        return /^#[0-9a-f]{6}$/i.test(value);
+      }
+
+      function applyColor(value, save) {
+        if (!isValidHexColor(value)) return;
+        accentColor = value;
+        document.documentElement.style.setProperty("--accent", accentColor);
+        colorPicker.value = accentColor;
+        if (save) localStorage.setItem(LS_COLOR_KEY, accentColor);
       }
 
       function place(xPos, yPos) {
@@ -277,7 +286,7 @@
       }
 
       function shouldRunDot() {
-        return document.visibilityState === "visible" && (!active || showDotOnActive);
+        return document.visibilityState === "visible" && !colorPanel.classList.contains("show");
       }
 
       function moveDot() {
@@ -330,154 +339,48 @@
         setDotVisible(false);
       }
 
-      function stopCountdown() {
-        if (countdownInterval) clearInterval(countdownInterval);
-        countdownInterval = null;
-      }
+      function showHintFor(ms) {
+        if (overlayHide) clearTimeout(overlayHide);
 
-      function clearOverlayTimers() {
-        if (introTimeout) clearTimeout(introTimeout);
-        if (hideTimeout) clearTimeout(hideTimeout);
-        introTimeout = null;
-        hideTimeout = null;
-        stopCountdown();
-      }
-
-      function fadeInOverlay() {
-        statusEl.classList.remove("show");
-        requestAnimationFrame(() => statusEl.classList.add("show"));
-      }
-
-      function fadeOutOverlay() {
-        statusEl.classList.remove("show");
-      }
-
-      function setOverlayHtmlWithFade(html) {
-        clearOverlayTimers();
-
-        fadeOutOverlay();
-        setTimeout(() => {
-          statusEl.innerHTML = html;
-          fadeInOverlay();
-        }, 100);
-      }
-
-      function applyDotMode() {
-        if (!active) {
-          dot.textContent = "OFF";
-          document.body.classList.remove("show-dot");
-
-          startDotCycle();
-          return;
-        }
-
-        if (showDotOnActive) {
-          dot.textContent = "ON";
-          document.body.classList.add("show-dot");
-
-          startDotCycle();
-        } else {
-          dot.textContent = "ON";
-          document.body.classList.remove("show-dot");
-          stopDotCycle();
-        }
-      }
-
-      function renderHintOverlay() {
         statusEl.innerHTML = `
-          <div class="main reserve" id="activeText">ACTIVE</div>
-          <div class="hint">
-            <span class="primary">Keeps your OLED screen awake</span><br>
-            <span class="reserve" id="restHint">
-              Hold click = toggle<br>
-              Space = toggle<br>
+          <div>
+            <div class="main">ACTIVE</div>
+            <div class="hint">
+              <span class="primary">Keeps your OLED screen awake</span><br>
+              Hold click = color<br>
               B = brightness<br>
               F = fullscreen<br>
-              H = hint<br>
-              V = status blip<br>
-              <div class="countdown" id="c">3</div>
-            </span>
+              H = hint
+            </div>
           </div>
         `;
-      }
 
-      function showHintFor(ms) {
-        clearOverlayTimers();
-
-        renderHintOverlay();
-        fadeInOverlay();
-
-        introTimeout = setTimeout(() => {
-          const activeText = document.getElementById("activeText");
-          const restHint = document.getElementById("restHint");
-
-          if (activeText) activeText.classList.add("reveal");
-          if (restHint) restHint.classList.add("reveal");
-
-          let t = 3;
-          const c = document.getElementById("c");
-          if (c) c.textContent = t;
-
-          countdownInterval = setInterval(() => {
-            const cc = document.getElementById("c");
-            if (!cc) return stopCountdown();
-            t--;
-            cc.textContent = t;
-            if (t <= 0) stopCountdown();
-          }, 1000);
-
-          hideTimeout = setTimeout(() => {
-            fadeOutOverlay();
-          }, ms);
-
-        }, 2000);
-      }
-
-      function progressiveIntro() {
-        showHintFor(HINT_SHOW_MS);
-      }
-
-      function showToggleState(text) {
-        toastEl.classList.remove("show");
-
-        setOverlayHtmlWithFade(`<div class="main">${text}</div>`);
-
-        hideTimeout = setTimeout(() => {
-          fadeOutOverlay();
-        }, 600);
+        statusEl.classList.add("show");
+        overlayHide = setTimeout(() => statusEl.classList.remove("show"), ms);
       }
 
       function showTinyToast(text) {
         if (toastHide) clearTimeout(toastHide);
-
         toastEl.innerHTML = `<div class="main">${text}</div>`;
         toastEl.classList.add("show");
-
-        toastHide = setTimeout(() => {
-          toastEl.classList.remove("show");
-        }, 600);
+        toastHide = setTimeout(() => toastEl.classList.remove("show"), 700);
       }
-
-      let wakeLockFailed = false;
 
       async function requestLock() {
         if (!navigator.wakeLock || wakeLock || wakeLockPending) return false;
         wakeLockPending = true;
+
         try {
           const sentinel = await navigator.wakeLock.request("screen");
-          if (!active) {
-            await sentinel.release();
-            return false;
-          }
           wakeLock = sentinel;
           wakeLockFailed = false;
+
           sentinel.addEventListener("release", () => {
             if (wakeLock !== sentinel) return;
             wakeLock = null;
-            if (active && document.visibilityState === "visible") {
-              requestLock();
-            }
+            if (document.visibilityState === "visible") requestLock();
           });
+
           return true;
         } catch {
           if (!wakeLockFailed) {
@@ -490,40 +393,10 @@
         }
       }
 
-      async function releaseLock() {
-        if (!wakeLock) return;
-        const lock = wakeLock;
-        wakeLock = null;
-        try { await lock.release(); } catch (_) {}
-      }
-
-      async function setActive(state) {
-        active = state;
-        document.body.classList.toggle("active", active);
-
-        if (active) {
-          showToggleState("ACTIVE");
-          await requestLock();
-        } else {
-          showToggleState("DEACTIVATED");
-          await releaseLock();
-        }
-
-        applyDotMode();
-      }
-
-      function toggleDotOnActive() {
-        showDotOnActive = !showDotOnActive;
-        localStorage.setItem(LS_KEY, showDotOnActive ? "1" : "0");
-
-        applyDotMode();
-        showTinyToast(showDotOnActive ? "BLIP ON" : "BLIP OFF");
-      }
-
       function toggleBrightness() {
         brightnessMode = !brightnessMode;
         localStorage.setItem(LS_BRIGHTNESS_KEY, brightnessMode ? "1" : "0");
-        document.body.classList.toggle("brightness", brightnessMode);
+        document.body.classList.toggle("brightness-low", brightnessMode);
         showTinyToast(brightnessMode ? "BRIGHTNESS LOW" : "BRIGHTNESS HIGH");
       }
 
@@ -535,6 +408,18 @@
             await document.documentElement.requestFullscreen();
           }
         } catch (_) {}
+      }
+
+      function openColorPanel() {
+        stopDotCycle();
+        colorPanel.classList.add("show");
+        document.body.classList.add("cursor-visible");
+      }
+
+      function closeColorPanel() {
+        colorPanel.classList.remove("show");
+        hideCursor();
+        startDotCycle();
       }
 
       function showHoldAt(clientX, clientY) {
@@ -562,14 +447,14 @@
           if (!holding) return;
 
           const elapsed = now - holdStart;
-          const p = Math.max(0, Math.min(1, elapsed / HOLD_MS));
-          holdFg.style.strokeDashoffset = String(CIRC * (1 - p));
+          const progress = Math.max(0, Math.min(1, elapsed / HOLD_MS));
+          holdFg.style.strokeDashoffset = String(CIRC * (1 - progress));
 
-          if (p >= 1 && !holdDone) {
+          if (progress >= 1 && !holdDone) {
             holdDone = true;
             holding = false;
             hideHold();
-            setActive(!active);
+            openColorPanel();
             return;
           }
 
@@ -580,23 +465,24 @@
       }
 
       function onUserActivity() {
+        if (colorPanel.classList.contains("show")) return;
         document.body.classList.add("cursor-visible");
         if (cursorTimer) clearTimeout(cursorTimer);
         cursorTimer = setTimeout(hideCursor, CURSOR_IDLE_MS);
       }
 
       function hideCursor() {
+        if (colorPanel.classList.contains("show")) return;
         document.body.classList.remove("cursor-visible");
         if (cursorTimer) clearTimeout(cursorTimer);
         cursorTimer = null;
       }
 
       document.addEventListener("pointerdown", (e) => {
-        if (e.button !== 0) return;
+        if (e.button !== 0 || e.target.closest("#colorPanel")) return;
         e.preventDefault();
 
         onUserActivity();
-
         holding = true;
         holdStart = performance.now();
         showHoldAt(e.clientX, e.clientY);
@@ -605,18 +491,16 @@
 
       document.addEventListener("pointermove", (e) => {
         onUserActivity();
-        if (holding) {
-          showHoldAt(e.clientX, e.clientY);
-        }
+        if (holding) showHoldAt(e.clientX, e.clientY);
       });
 
       document.addEventListener("pointerup", (e) => {
-        if (e.button !== 0) return;
+        if (e.button !== 0 || e.target.closest("#colorPanel")) return;
         e.preventDefault();
 
         onUserActivity();
-
         if (!holding) return;
+
         holding = false;
         stopHoldLoop();
         hideHold();
@@ -629,15 +513,23 @@
         hideHold();
       });
 
+      colorPicker.addEventListener("input", (e) => {
+        applyColor(e.target.value, true);
+      });
+
+      colorPanel.addEventListener("click", (e) => {
+        if (e.target === colorPanel) closeColorPanel();
+      });
+
       document.addEventListener("visibilitychange", async () => {
         if (document.visibilityState === "hidden") {
           stopDotCycle();
           return;
         }
 
-        applyDotMode();
+        startDotCycle();
         hideCursor();
-        if (active && !wakeLock) await requestLock();
+        if (!wakeLock) await requestLock();
       });
 
       window.addEventListener("resize", () => {
@@ -656,9 +548,9 @@
       document.addEventListener("keydown", (e) => {
         onUserActivity();
 
-        if (e.code === "Space") {
+        if (e.key === "Escape" && colorPanel.classList.contains("show")) {
           e.preventDefault();
-          setActive(!active);
+          closeColorPanel();
           return;
         }
 
@@ -674,25 +566,34 @@
           return;
         }
 
-        if (e.key === "v" || e.key === "V") {
-          e.preventDefault();
-          toggleDotOnActive();
-          return;
-        }
-
         if (e.key === "h" || e.key === "H") {
           e.preventDefault();
           showHintFor(HINT_SHOW_MS);
-          return;
         }
       });
 
-      (async function init() {
-        document.body.classList.toggle("active", active);
-        document.body.classList.toggle("brightness", brightnessMode);
+      async function removeOldAppCaches() {
+        if ("serviceWorker" in navigator) {
+          try {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(registrations.map(registration => registration.unregister()));
+          } catch (_) {}
+        }
 
-        applyDotMode();
-        progressiveIntro();
+        if ("caches" in window) {
+          try {
+            const keys = await caches.keys();
+            await Promise.all(keys.map(key => caches.delete(key)));
+          } catch (_) {}
+        }
+      }
+
+      (async function init() {
+        applyColor(accentColor, false);
+        document.body.classList.toggle("brightness-low", brightnessMode);
+
+        startDotCycle();
+        showHintFor(HINT_SHOW_MS);
 
         document.body.classList.add("boot");
 
@@ -704,22 +605,18 @@
         });
 
         hideCursor();
+        await removeOldAppCaches();
         await requestLock();
 
         setInterval(() => {
-          if (active && !wakeLock && document.visibilityState === "visible") requestLock();
+          if (!wakeLock && document.visibilityState === "visible") requestLock();
         }, 30000);
 
         window.addEventListener("pageshow", (e) => {
           hideCursor();
-          if (e.persisted && active && !wakeLock) requestLock();
+          if (e.persisted && !wakeLock) requestLock();
         });
-
-        if ("serviceWorker" in navigator) {
-          navigator.serviceWorker.register("/sw.js");
-        }
       })();
-
     })();
   </script>
 </body>

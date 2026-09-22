@@ -1,32 +1,27 @@
-const CACHE = 'oled-v3';
-const ASSETS = ['/', '/index.html', '/circle-256.svg', '/manifest.json', '/circle-256.ico'];
-
-self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
+self.addEventListener("install", () => {
   self.skipWaiting();
 });
 
-self.addEventListener('activate', e => {
-  e.waitUntil(
+self.addEventListener("activate", event => {
+  event.waitUntil(
     (async () => {
-      const keys = await caches.keys();
-      const oldKeys = keys.filter(k => k !== CACHE);
+      try {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(key => caches.delete(key)));
+      } catch (_) {}
 
-      await Promise.all(oldKeys.map(k => caches.delete(k)));
-      await self.clients.claim();
+      try {
+        await self.registration.unregister();
+      } catch (_) {}
 
-      if (oldKeys.length === 0) return;
+      const clients = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true
+      });
 
-      const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-      await Promise.all(clients.map(client =>
-        client.navigate(client.url).catch(() => {})
-      ));
+      await Promise.all(
+        clients.map(client => client.navigate(client.url).catch(() => {}))
+      );
     })()
-  );
-});
-
-self.addEventListener('fetch', e => {
-  e.respondWith(
-    caches.match(e.request).then(r => r || fetch(e.request))
   );
 });
