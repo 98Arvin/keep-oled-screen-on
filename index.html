@@ -376,8 +376,7 @@
               <span class="primary">Keeps your OLED screen awake</span><br>
               Hold click = color<br>
               B = brightness<br>
-              F = fullscreen<br>
-              H = hint
+              F = fullscreen
             </div>
           </div>
         `;
@@ -628,11 +627,6 @@
           e.preventDefault();
           toggleFullscreen();
           return;
-        }
-
-        if (e.key === "h" || e.key === "H") {
-          e.preventDefault();
-          showHintFor(HINT_SHOW_MS);
         }
       });
 
