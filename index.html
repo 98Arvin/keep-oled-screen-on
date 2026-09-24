@@ -239,10 +239,12 @@
       const DEFAULT_COLOR = "#ff7a00";
       const LS_COLOR_KEY = "accentColor";
       const LS_BRIGHTNESS_KEY = "brightnessMode";
+      const KEEP_AWAKE_VIDEO = "data:video/webm;base64,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";
 
       let wakeLock = null;
       let wakeLockPending = false;
       let wakeLockFailed = false;
+      let mediaFallback = null;
 
       const dot = document.getElementById("dot");
       const statusEl = document.getElementById("status");
@@ -388,7 +390,9 @@
       }
 
       async function requestLock() {
-        if (!navigator.wakeLock || wakeLock || wakeLockPending) return false;
+        if (!navigator.wakeLock || wakeLockPending) return false;
+        if (wakeLock && !wakeLock.released) return true;
+        wakeLock = null;
         wakeLockPending = true;
 
         try {
@@ -411,6 +415,62 @@
           return false;
         } finally {
           wakeLockPending = false;
+        }
+      }
+
+      function startMediaFallback() {
+        if (document.visibilityState !== "visible") return;
+
+        if (!mediaFallback) {
+          const video = document.createElement("video");
+          video.src = KEEP_AWAKE_VIDEO;
+          video.muted = true;
+          video.loop = true;
+          video.playsInline = true;
+          video.preload = "auto";
+          video.disablePictureInPicture = true;
+          video.setAttribute("aria-hidden", "true");
+          video.tabIndex = -1;
+          video.style.position = "fixed";
+          video.style.width = "1px";
+          video.style.height = "1px";
+          video.style.opacity = "0";
+          video.style.pointerEvents = "none";
+          video.style.left = "-10px";
+          video.style.top = "-10px";
+
+          video.addEventListener("pause", () => {
+            if (document.visibilityState === "visible") {
+              setTimeout(startMediaFallback, 250);
+            }
+          });
+
+          document.body.appendChild(video);
+          mediaFallback = video;
+        }
+
+        if (!mediaFallback.paused && !mediaFallback.ended) return;
+
+        const playPromise = mediaFallback.play();
+        if (playPromise && typeof playPromise.catch === "function") {
+          playPromise.catch(() => {});
+        }
+      }
+
+      function stopMediaFallback() {
+        if (mediaFallback && !mediaFallback.paused) {
+          mediaFallback.pause();
+        }
+      }
+
+      function ensureKeepAwake() {
+        if (document.visibilityState !== "visible") return;
+
+        startMediaFallback();
+
+        if (!wakeLock || wakeLock.released) {
+          wakeLock = null;
+          requestLock();
         }
       }
 
@@ -582,12 +642,13 @@
       document.addEventListener("visibilitychange", async () => {
         if (document.visibilityState === "hidden") {
           stopDotCycle();
+          stopMediaFallback();
           return;
         }
 
         startDotCycle();
         hideCursor();
-        if (!wakeLock) await requestLock();
+        ensureKeepAwake();
       });
 
       window.addEventListener("resize", () => {
@@ -664,16 +725,20 @@
 
         hideCursor();
         await removeOldAppCaches();
+        startMediaFallback();
         await requestLock();
 
-        setInterval(() => {
-          if (!wakeLock && document.visibilityState === "visible") requestLock();
-        }, 30000);
+        setInterval(ensureKeepAwake, 10000);
 
-        window.addEventListener("pageshow", (e) => {
+        window.addEventListener("pageshow", () => {
           hideCursor();
-          if (e.persisted && !wakeLock) requestLock();
+          ensureKeepAwake();
         });
+
+        window.addEventListener("focus", ensureKeepAwake);
+
+        document.addEventListener("pointerdown", startMediaFallback, { passive: true });
+        document.addEventListener("keydown", startMediaFallback);
       })();
     })();
   </script>
