@@ -102,10 +102,10 @@
 
     #toast.show { opacity: var(--text-opacity); }
 
-    #toast .main {
+    #toast {
       font-size: 12px;
       letter-spacing: 1px;
-      opacity: 0.85;
+      width: min(90vw, 36rem);
     }
 
     #hold {
@@ -206,9 +206,9 @@
 </head>
 <body tabindex="0">
 
-  <div id="dot"></div>
+  <div id="dot" aria-hidden="true"></div>
   <div id="status"></div>
-  <div id="toast"></div>
+  <div id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
   <div id="hold" aria-hidden="true">
     <svg viewBox="0 0 56 56">
@@ -217,9 +217,9 @@
     </svg>
   </div>
 
-  <div id="colorPanel">
+  <div id="colorPanel" role="dialog" aria-modal="true" aria-labelledby="colorTitle">
     <div id="colorCard">
-      <div class="title">COLOR</div>
+      <div class="title" id="colorTitle">COLOR</div>
       <input id="colorPicker" type="color" value="#ff7a00" aria-label="Choose accent color" />
       <button id="resetColor" type="button">RESET DEFAULT</button>
       <div class="hint">
@@ -243,8 +243,23 @@
 
       let wakeLock = null;
       let wakeLockPending = false;
-      let wakeLockFailed = false;
       let mediaFallback = null;
+      let mediaPlaying = false;
+      let keepAwakeStatus = "pending";
+      let previousFocus = null;
+
+      // Preferences must never prevent the core keep-awake behavior from starting.
+      function readPreference(key, fallback) {
+        try { return localStorage.getItem(key) ?? fallback; }
+        catch (_) { return fallback; }
+      }
+
+      function savePreference(key, value) {
+        try {
+          if (value === null) localStorage.removeItem(key);
+          else localStorage.setItem(key, value);
+        } catch (_) {}
+      }
 
       const dot = document.getElementById("dot");
       const statusEl = document.getElementById("status");
@@ -280,8 +295,8 @@
       const R = 20;
       const CIRC = 2 * Math.PI * R;
 
-      let brightnessMode = (localStorage.getItem(LS_BRIGHTNESS_KEY) ?? "0") === "1";
-      let accentColor = localStorage.getItem(LS_COLOR_KEY) || DEFAULT_COLOR;
+      let brightnessMode = readPreference(LS_BRIGHTNESS_KEY, "0") === "1";
+      let accentColor = readPreference(LS_COLOR_KEY, DEFAULT_COLOR);
 
       function rand(min, max) {
         return Math.random() * (max - min) + min;
@@ -296,7 +311,7 @@
         accentColor = value;
         document.documentElement.style.setProperty("--accent", accentColor);
         colorPicker.value = accentColor;
-        if (save) localStorage.setItem(LS_COLOR_KEY, accentColor);
+        if (save) savePreference(LS_COLOR_KEY, accentColor);
       }
 
       function place(xPos, yPos) {
@@ -311,7 +326,7 @@
       }
 
       function shouldRunDot() {
-        return document.visibilityState === "visible" && !colorPanel.classList.contains("show");
+        return document.visibilityState === "visible" && keepAwakeStatus === "locked" && !colorPanel.classList.contains("show");
       }
 
       function moveDot() {
@@ -371,9 +386,10 @@
           <div>
             <div class="hint">
               <span class="primary">Keeps your OLED screen awake</span><br>
-              Hold click = color<br>
+              Hold click / C = color<br>
               B = brightness<br>
-              F = fullscreen
+              F = fullscreen<br>
+              H = help and wake status
             </div>
           </div>
         `;
@@ -382,15 +398,35 @@
         overlayHide = setTimeout(() => statusEl.classList.remove("show"), ms);
       }
 
-      function showTinyToast(text) {
+      function showTinyToast(text, duration = 700) {
         if (toastHide) clearTimeout(toastHide);
-        toastEl.innerHTML = `<div class="main">${text}</div>`;
+        toastEl.textContent = text;
         toastEl.classList.add("show");
-        toastHide = setTimeout(() => toastEl.classList.remove("show"), 700);
+        toastHide = setTimeout(() => toastEl.classList.remove("show"), duration);
+      }
+
+      function wakeStatusMessage() {
+        if (keepAwakeStatus === "locked") return "SCREEN WAKE LOCK ACTIVE";
+        if (keepAwakeStatus === "fallback") return "VIDEO MODE — KEEP-AWAKE NOT VERIFIED";
+        if (keepAwakeStatus === "pending") return "REQUESTING SCREEN WAKE LOCK";
+        return "KEEP-AWAKE UNAVAILABLE — TAP TO RETRY";
+      }
+
+      function updateWakeStatus() {
+        const next = wakeLock && !wakeLock.released ? "locked"
+          : mediaPlaying ? "fallback" : wakeLockPending ? "pending" : "failed";
+        const changed = next !== keepAwakeStatus;
+        keepAwakeStatus = next;
+        if (next === "locked") startDotCycle();
+        else stopDotCycle();
+        if (changed && document.visibilityState === "visible") {
+          showTinyToast(wakeStatusMessage(), 5000);
+        }
       }
 
       async function requestLock() {
-        if (!navigator.wakeLock || wakeLockPending) return false;
+        if (!navigator.wakeLock) { updateWakeStatus(); return false; }
+        if (wakeLockPending || document.visibilityState !== "visible") return false;
         if (wakeLock && !wakeLock.released) return true;
         wakeLock = null;
         wakeLockPending = true;
@@ -398,23 +434,21 @@
         try {
           const sentinel = await navigator.wakeLock.request("screen");
           wakeLock = sentinel;
-          wakeLockFailed = false;
+          updateWakeStatus();
 
           sentinel.addEventListener("release", () => {
             if (wakeLock !== sentinel) return;
             wakeLock = null;
+            updateWakeStatus();
             if (document.visibilityState === "visible") requestLock();
           });
 
           return true;
         } catch {
-          if (!wakeLockFailed) {
-            wakeLockFailed = true;
-            showTinyToast("LOCK FAILED");
-          }
           return false;
         } finally {
           wakeLockPending = false;
+          updateWakeStatus();
         }
       }
 
@@ -439,7 +473,17 @@
           video.style.left = "-10px";
           video.style.top = "-10px";
 
+          video.addEventListener("playing", () => {
+            mediaPlaying = true;
+            updateWakeStatus();
+          });
+          video.addEventListener("error", () => {
+            mediaPlaying = false;
+            updateWakeStatus();
+          });
           video.addEventListener("pause", () => {
+            mediaPlaying = false;
+            updateWakeStatus();
             if (document.visibilityState === "visible") {
               setTimeout(startMediaFallback, 250);
             }
@@ -453,7 +497,7 @@
 
         const playPromise = mediaFallback.play();
         if (playPromise && typeof playPromise.catch === "function") {
-          playPromise.catch(() => {});
+          playPromise.catch(() => { mediaPlaying = false; updateWakeStatus(); });
         }
       }
 
@@ -466,6 +510,7 @@
       function ensureKeepAwake() {
         if (document.visibilityState !== "visible") return;
 
+        // Retained alongside native locking for the existing Linux workaround.
         startMediaFallback();
 
         if (!wakeLock || wakeLock.released) {
@@ -476,7 +521,7 @@
 
       function toggleBrightness() {
         brightnessMode = !brightnessMode;
-        localStorage.setItem(LS_BRIGHTNESS_KEY, brightnessMode ? "1" : "0");
+        savePreference(LS_BRIGHTNESS_KEY, brightnessMode ? "1" : "0");
         document.body.classList.toggle("brightness-low", brightnessMode);
         showTinyToast(brightnessMode ? "BRIGHTNESS LOW" : "BRIGHTNESS HIGH");
       }
@@ -516,8 +561,10 @@
       }
 
       function openColorPanel() {
+        previousFocus = document.activeElement;
         stopDotCycle();
         colorPanel.classList.add("show");
+        colorPicker.focus();
         document.body.classList.add("cursor-visible");
         resetColorPanelTimer();
       }
@@ -525,6 +572,7 @@
       function closeColorPanel() {
         stopColorPanelTimer();
         colorPanel.classList.remove("show");
+        if (previousFocus && previousFocus.isConnected) previousFocus.focus();
         hideCursor();
         startDotCycle();
       }
@@ -626,7 +674,7 @@
       });
 
       resetColor.addEventListener("click", () => {
-        localStorage.removeItem(LS_COLOR_KEY);
+        savePreference(LS_COLOR_KEY, null);
         applyColor(DEFAULT_COLOR, false);
         resetColorPanelTimer();
       });
@@ -641,6 +689,9 @@
 
       document.addEventListener("visibilitychange", async () => {
         if (document.visibilityState === "hidden") {
+          holding = false;
+          stopHoldLoop();
+          hideHold();
           stopDotCycle();
           stopMediaFallback();
           return;
@@ -669,6 +720,28 @@
         if (e.key === "Escape" && colorPanel.classList.contains("show")) {
           e.preventDefault();
           closeColorPanel();
+          return;
+        }
+
+        if (colorPanel.classList.contains("show")) {
+          resetColorPanelTimer();
+          if (e.key === "Tab") {
+            e.preventDefault();
+            (document.activeElement === colorPicker ? resetColor : colorPicker).focus();
+          }
+          return;
+        }
+        if (e.repeat || e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return;
+
+        if (e.key === "c" || e.key === "C") {
+          e.preventDefault();
+          openColorPanel();
+          return;
+        }
+        if (e.key === "h" || e.key === "H") {
+          e.preventDefault();
+          showHintFor(5000);
+          showTinyToast(wakeStatusMessage(), 5000);
           return;
         }
 
@@ -737,8 +810,8 @@
 
         window.addEventListener("focus", ensureKeepAwake);
 
-        document.addEventListener("pointerdown", startMediaFallback, { passive: true });
-        document.addEventListener("keydown", startMediaFallback);
+        document.addEventListener("pointerdown", ensureKeepAwake, { passive: true });
+        document.addEventListener("keydown", ensureKeepAwake);
       })();
     })();
   </script>
