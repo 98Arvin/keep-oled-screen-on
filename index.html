@@ -43,6 +43,21 @@
     body.cursor-visible,
     body.cursor-visible * { cursor: default; }
 
+    /* Muted video must be on-screen and large enough for Chromium's media
+       wake lock. The clip is pure black, so it remains OLED-friendly. */
+    #keepAwakeVideo {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: fill;
+      background: #000;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #dot, #status, #toast, #hold { z-index: 1; }
+
     #dot {
       position: fixed;
       left: 0;
@@ -406,7 +421,7 @@
       }
 
       function wakeStatusMessage() {
-        if (keepAwakeStatus === "locked") return "SCREEN WAKE LOCK ACTIVE";
+        if (keepAwakeStatus === "locked") return "BROWSER WAKE LOCK ACTIVE - KEEP THIS TAB VISIBLE";
         if (keepAwakeStatus === "fallback") return "VIDEO MODE — KEEP-AWAKE NOT VERIFIED";
         if (keepAwakeStatus === "pending") return "REQUESTING SCREEN WAKE LOCK";
         return "KEEP-AWAKE UNAVAILABLE — TAP TO RETRY";
@@ -465,13 +480,7 @@
           video.disablePictureInPicture = true;
           video.setAttribute("aria-hidden", "true");
           video.tabIndex = -1;
-          video.style.position = "fixed";
-          video.style.width = "1px";
-          video.style.height = "1px";
-          video.style.opacity = "0";
-          video.style.pointerEvents = "none";
-          video.style.left = "-10px";
-          video.style.top = "-10px";
+          video.id = "keepAwakeVideo";
 
           video.addEventListener("playing", () => {
             mediaPlaying = true;
@@ -510,7 +519,7 @@
       function ensureKeepAwake() {
         if (document.visibilityState !== "visible") return;
 
-        // Retained alongside native locking for the existing Linux workaround.
+        // Playback is a fallback, not proof that the OS accepted an inhibitor.
         startMediaFallback();
 
         if (!wakeLock || wakeLock.released) {
@@ -797,9 +806,9 @@
         });
 
         hideCursor();
-        await removeOldAppCaches();
-        startMediaFallback();
-        await requestLock();
+        // Cache cleanup must not delay playback, wake requests or recovery listeners.
+        removeOldAppCaches();
+        ensureKeepAwake();
 
         setInterval(ensureKeepAwake, 10000);
 
