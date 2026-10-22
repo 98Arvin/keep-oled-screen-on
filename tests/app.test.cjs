@@ -6,7 +6,7 @@ const html = readFileSync(`${__dirname}/../index.html`, 'utf8');
 const script = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)]
   .map(match => match[1]).find(source => source.includes('function init'));
 
-async function boot({ storageBlocked = false, native = true, rejected = false, videoRejected = false } = {}) {
+async function boot({ storageBlocked = false, native = true, rejected = false, videoRejected = false, cleanupPending = false } = {}) {
   const elements = {}, handlers = {}, sentinels = [];
   let requests = 0, document, video;
   function element() {
@@ -48,6 +48,7 @@ async function boot({ storageBlocked = false, native = true, rejected = false, v
     sentinels.push(sentinel);
     return sentinel;
   } } } : {};
+  if (cleanupPending) navigator.serviceWorker = { getRegistrations: () => new Promise(() => {}) };
   function storage() { if (storageBlocked) throw new Error('SecurityError'); return null; }
   const context = {
     document, navigator,
@@ -61,7 +62,7 @@ async function boot({ storageBlocked = false, native = true, rejected = false, v
   const settle = () => new Promise(resolve => setImmediate(resolve));
   await settle();
   return {
-    elements, document, sentinels, get requests() { return requests; },
+    elements, document, sentinels, get requests() { return requests; }, get video() { return video; },
     async key(key, extra = {}) {
       for (const handler of handlers.keydown ?? []) handler({ key, preventDefault() {}, ...extra });
       await settle();
@@ -147,4 +148,38 @@ test('help reports the current wake state', async () => {
   await app.key('h');
   assert(app.elements.status.classList.contains('show'));
   assert.match(app.elements.toast.textContent, /UNAVAILABLE/);
+});
+
+test('muted video fallback is rendered across the viewport, not hidden off-screen', async () => {
+  const app = await boot({ native: false });
+  assert.equal(app.video.id, 'keepAwakeVideo');
+  assert.equal(app.video.muted, true);
+  assert.equal(app.video.loop, true);
+  const css = html.match(/#keepAwakeVideo\s*\{([^}]+)\}/)[1];
+  assert.match(css, /position:\s*fixed/);
+  assert.match(css, /inset:\s*0/);
+  assert.match(css, /width:\s*100%/);
+  assert.match(css, /height:\s*100%/);
+  assert.match(css, /object-fit:\s*fill/);
+  assert.doesNotMatch(css, /opacity:\s*0|display:\s*none|visibility:\s*hidden/);
+  assert.doesNotMatch(script, /video\.style\.(?:width|height|opacity|left|top)\s*=/);
+});
+
+test('video fallback pauses when hidden and resumes when visible', async () => {
+  const app = await boot({ native: false });
+  assert.equal(app.video.paused, false);
+  await app.visibility('hidden');
+  assert.equal(app.video.paused, true);
+  await app.visibility('visible');
+  assert.equal(app.video.paused, false);
+});
+
+test('pending cache cleanup does not block wake requests or retry listeners', async () => {
+  const app = await boot({ cleanupPending: true, rejected: true });
+  assert.equal(app.requests, 1);
+  assert.equal(app.video.paused, false);
+  app.denyLock(false);
+  await app.key('b');
+  assert.equal(app.requests, 2);
+  assert(app.document.body.classList.contains('brightness-low'));
 });
